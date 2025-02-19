@@ -1,6 +1,5 @@
 import { Point } from "./primitives";
 
-
 export class GlobalSettings {
   isScaled: boolean = false;
   canvasSize: Point;
@@ -15,5 +14,13 @@ export class GlobalSettings {
     this.canvasSize = canvasSize;
     this.backgroundColor = backgroundColor;
     this.imageScaleFactor = imageScaleFactor;
+  }
+
+  static fromJSON(json: any): GlobalSettings {
+    return new GlobalSettings(
+      new Point(json.canvasSize.x, json.canvasSize.y),
+      json.backgroundColor,
+      json.imageScaleFactor
+    );
   }
 }

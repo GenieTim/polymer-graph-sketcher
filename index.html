@@ -18,6 +18,11 @@
       width: 100vw;
       height: 100vh;
     }
+
+    .resizable {
+      overflow: hidden;
+      resize: both;
+    }
   </style>
 
 </head>
@@ -26,8 +31,13 @@
 
 
   <div class="container">
+    <div class="text-center" style="display: flex; justify-content: center; align-items: center;">
+      <div class="resizable" id="canvas-parent">
+        <canvas id="canvas" class="">Canvas not supported.</canvas>
+      </div>
+    </div>
     <div class="text-center">
-      <canvas id="canvas" class="">Canvas not supported.</canvas>
+      <output id="canvas-size"></output>
     </div>
   </div>
 
@@ -50,10 +60,10 @@
         </div> -->
 
         <div class="btn-group">
-          <button type="button" class="btn btn-warning" id="clearSelectionButton" onclick="clearSelection();">
+          <button type="button" class="btn btn-warning" id="clearSelectionButton">
             <u>C</u>lear selection
           </button>
-          <button type="button" class="btn btn-primary" id="selectAllButton" onclick="selectAll();">
+          <button type="button" class="btn btn-primary" id="selectAllButton">
             Select <u>a</u>ll
           </button>
         </div>
@@ -113,22 +123,23 @@
     </div>
 
     <div class="mt-2">
-      <button onclick="clearCanvas()" type="button" class="btn btn-danger">Clear canvas</button>
+      <button onclick="clearCanvas()" type="button" class="btn btn-danger" id="clearCanvasButton">Clear canvas</button>
 
-      <button onclick="saveCanvasAsImage()" type="button" class="btn btn-primary">Save as image</button>
+      <button onclick="saveCanvasAsImage()" type="button" class="btn btn-primary" id="saveImageButton">Save as
+        image</button>
 
-      <button onclick="exportGraph()" type="button" class="btn btn-primary">Export graph</button>
+      <button onclick="exportGraph()" type="button" class="btn btn-primary" id="exportGraphButton">Export graph</button>
     </div>
 
     <div class="row mt-2">
       <div class="col">
         <label for="import">
           Import graph</label>
-        <input type="file" id="import" onchange="importGraph()" />
+        <input type="file" id="import" />
       </div>
     </div>
   </div>
-  
+
   <script type="module" src="/src/main.ts"></script>
 </body>
 

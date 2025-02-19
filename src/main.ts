@@ -8,6 +8,9 @@ import "./style.css";
 var canvas: HTMLCanvasElement = document.getElementById(
   "canvas"
 ) as HTMLCanvasElement;
+var canvasParent: HTMLElement = document.getElementById(
+  "canvas-parent"
+) as HTMLElement;
 var ctx: CanvasRenderingContext2D = canvas.getContext(
   "2d"
 ) as CanvasRenderingContext2D;
@@ -193,9 +196,8 @@ function resizeCanvas(width: number, height: number) {
   const scaling1D = Math.min(xScaling, yScaling);
 
   // reposition elements to maintain their position relative to the canvas
-  var allNodeIds = graph.getAllNodeIds();
-  allNodeIds.forEach((id) => {
-    const node = graph.getNode(id);
+  var allNodes = graph.getAllNodes();
+  allNodes.forEach((node) => {
     node.coordinates.x *= xScaling;
     node.coordinates.y *= yScaling;
     node.radius *= scaling1D;
@@ -315,8 +317,22 @@ function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
 }
 
 window.addEventListener("load", () => {
+  canvasParent.style.width = settings.canvasSize.x + "px";
+  canvasParent.style.height = settings.canvasSize.y + "px";
   resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
   clearCanvas();
+
+  // detect resizing of the canvas
+  const observer = new ResizeObserver(function (mutations) {
+    console.log("mutations:", mutations);
+    settings.canvasSize.x = canvasParent.clientWidth;
+    settings.canvasSize.y = canvasParent.clientHeight;
+    resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
+    recomputeElementsToDraw();
+    document.getElementById("canvas-size")!.textContent =
+      `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+  });
+  observer.observe(canvasParent);
 
   var modeSwitch = document.getElementById("modeSwitch") as HTMLSelectElement;
   modeSwitch.addEventListener("click", function () {
@@ -349,6 +365,7 @@ window.addEventListener("load", () => {
     }
   }
 
+  // add event liteners
   // update selected nodes when changing node settings
   (
     document.getElementById("vertexRadius") as HTMLInputElement
@@ -416,6 +433,26 @@ window.addEventListener("load", () => {
       recomputeElementsToDraw();
     }
   );
+
+  // to buttons as well
+  (
+    document.getElementById("clearSelectionButton") as HTMLButtonElement
+  ).addEventListener("click", clearSelection);
+  (
+    document.getElementById("selectAllButton") as HTMLButtonElement
+  ).addEventListener("click", selectAll);
+  (
+    document.getElementById("clearCanvasButton") as HTMLButtonElement
+  ).addEventListener("click", clearCanvas);
+  (
+    document.getElementById("saveImageButton") as HTMLButtonElement
+  ).addEventListener("click", saveCanvasAsImage);
+  (
+    document.getElementById("exportGraphButton") as HTMLButtonElement
+  ).addEventListener("click", exportGraph);
+
+  // and the import
+  (document.getElementById("import") as HTMLInputElement).addEventListener("change", importGraph);
 });
 
 function changeInteractionMode(mode: string) {
@@ -470,7 +507,9 @@ function saveCanvasAsImage() {
 }
 
 function exportGraph() {
-  var blob = new Blob([JSON.stringify(graph)], { type: "application/json" });
+  var blob = new Blob([JSON.stringify({ graph: graph, settings: settings })], {
+    type: "application/json",
+  });
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
   a.href = url;
@@ -489,7 +528,15 @@ function importGraph(): void {
   reader.onload = function (event: ProgressEvent<FileReader>) {
     if (event.target?.result) {
       const jsonGraph = JSON.parse(event.target.result as string);
-      graph = Graph.fromJSON(jsonGraph);
+      if ("settings" in jsonGraph) {
+        settings = GlobalSettings.fromJSON(jsonGraph.settings);
+        canvasParent.style.width = settings.canvasSize.x + "px";
+        canvasParent.style.height = settings.canvasSize.y + "px";
+        resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
+        graph = Graph.fromJSON(jsonGraph.graph);
+      } else {
+        graph = Graph.fromJSON(jsonGraph);
+      }
       nNodesTotal = Math.max(...graph.getAllNodeIds()) + 1;
       recomputeElementsToDraw();
     }

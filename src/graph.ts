@@ -111,6 +111,18 @@ export class Graph {
     this.edges = this.edges.filter((edge) => edge.fromId !== edge.toId);
   }
 
+  removeDuplicateEdges(): void {
+    const seen = new Set();
+    this.edges = this.edges.filter((edge) => {
+      const combinedId = `${Math.min(edge.fromId, edge.toId)}-${Math.max(edge.fromId, edge.toId)}`;
+      if (seen.has(combinedId)) {
+        return false;
+      }
+      seen.add(combinedId);
+      return true;
+    });
+  }
+
   getEdgesWithBothEndsInNodes(nodeIds: number[]): Edge[] {
     return this.edges.filter(
       (edge) => nodeIds.includes(edge.fromId) && nodeIds.includes(edge.toId)
@@ -275,7 +287,13 @@ export class Graph {
 
   deleteEdge(edgeId: number): Edge {
     if (edgeId < 0 || edgeId >= this.edges.length) {
-      throw new Error("Invalid edge ID " + edgeId + ". Edge ID must be between 0 and " + (this.edges.length - 1) + ".");
+      throw new Error(
+        "Invalid edge ID " +
+          edgeId +
+          ". Edge ID must be between 0 and " +
+          (this.edges.length - 1) +
+          "."
+      );
     }
 
     const edge = this.edges[edgeId];

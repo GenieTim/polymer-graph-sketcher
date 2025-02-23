@@ -195,23 +195,31 @@ function resizeCanvas(width: number, height: number) {
 
   const scaling1D = Math.min(xScaling, yScaling);
 
+  const resizeElements: boolean = (
+    document.getElementById("resizeElements") as HTMLInputElement
+  ).checked;
+
   // reposition elements to maintain their position relative to the canvas
   var allNodes = graph.getAllNodes();
   allNodes.forEach((node) => {
     node.coordinates.x *= xScaling;
     node.coordinates.y *= yScaling;
-    node.radius *= scaling1D;
-    node.strokeWidth *= scaling1D;
+    if (resizeElements) {
+      node.radius *= scaling1D;
+      node.strokeWidth *= scaling1D;
+    }
   });
 
-  var allEdges = graph.getAllEdges();
-  allEdges.forEach((edge) => {
-    edge.weight *= scaling1D;
-  });
+  if (resizeElements) {
+    var allEdges = graph.getAllEdges();
+    allEdges.forEach((edge) => {
+      edge.weight *= scaling1D;
+    });
 
-  graph.zigzagLength *= scaling1D;
-  graph.zigzagSpacing *= scaling1D;
-  graph.zigzagEndLengths *= scaling1D;
+    graph.zigzagLength *= scaling1D;
+    graph.zigzagSpacing *= scaling1D;
+    graph.zigzagEndLengths *= scaling1D;
+  }
 
   recomputeElementsToDraw({ x: xScaling, y: yScaling }); // redraw all elements after resizing the canvas.
 }
@@ -262,6 +270,13 @@ function clearSelection() {
 function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
   var scalingFactor1D = Math.max(scaling.x, scaling.y);
 
+  const bgColor = (
+    document.getElementById("backgroundColor") as HTMLInputElement
+  ).value;
+  const borderColor = (
+    document.getElementById("borderColor") as HTMLInputElement
+  ).value;
+
   elementsToDraw = [
     // white background
     new Rectangle(
@@ -269,8 +284,8 @@ function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
       canvas.width,
       canvas.height,
       0,
-      "#fff",
-      "#fff"
+      bgColor,
+      bgColor
     ),
   ];
 
@@ -283,7 +298,7 @@ function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
       canvas.width,
       canvas.height,
       20.0 * scalingFactor1D,
-      "#fff"
+      bgColor
     )
   );
   // black border as box around the graph
@@ -293,7 +308,7 @@ function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
       canvas.width - 20 * scaling.x,
       canvas.height - 20 * scaling.y,
       4.0 * scalingFactor1D,
-      "#000"
+      borderColor
     )
   );
 
@@ -316,9 +331,18 @@ function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
   draw();
 }
 
+function setValueById(id: string, value: string | number) {
+  const element = document.getElementById(id);
+  if (element instanceof HTMLInputElement) {
+    element.value = value as string;
+  }
+}
+
 window.addEventListener("load", () => {
   canvasParent.style.width = settings.canvasSize.x + "px";
   canvasParent.style.height = settings.canvasSize.y + "px";
+  setValueById("canvasWidth", settings.canvasSize.x);
+  setValueById("canvasHeight", settings.canvasSize.y);
   resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
   clearCanvas();
 
@@ -365,7 +389,7 @@ window.addEventListener("load", () => {
     }
   }
 
-  // add event liteners
+  // add event listeners
   // update selected nodes when changing node settings
   (
     document.getElementById("vertexRadius") as HTMLInputElement
@@ -411,6 +435,7 @@ window.addEventListener("load", () => {
     }
   );
 
+  // edge properties
   (document.getElementById("edgeColor") as HTMLInputElement).addEventListener(
     "change",
     function () {
@@ -434,6 +459,63 @@ window.addEventListener("load", () => {
     }
   );
 
+  // canvas properties
+  (document.getElementById("canvasWidth") as HTMLInputElement).addEventListener(
+    "change",
+    function () {
+      const val = parseFloat(this.value);
+      actionManager.addAction(
+        new (class implements Action {
+          private targetValue: number = val;
+          private previousValue: number = settings.canvasSize.x;
+
+          private setWidth(width: number): void {
+            canvasParent.style.width = width + "px";
+            settings.canvasSize.x = width;
+            resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
+            recomputeElementsToDraw();
+            document.getElementById("canvas-size")!.textContent =
+              `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+          }
+
+          do(): void {
+            this.setWidth(this.targetValue);
+          }
+          undo(): void {
+            this.setWidth(this.previousValue);
+          }
+        })()
+      );
+    }
+  );
+  (
+    document.getElementById("canvasHeight") as HTMLInputElement
+  ).addEventListener("change", function () {
+    const val = parseFloat(this.value);
+    actionManager.addAction(
+      new (class implements Action {
+        private targetValue: number = val;
+        private previousValue: number = settings.canvasSize.y;
+
+        private setHeight(height: number): void {
+          canvasParent.style.height = height + "px";
+          settings.canvasSize.y = height;
+          resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
+          recomputeElementsToDraw();
+          document.getElementById("canvas-size")!.textContent =
+            `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+        }
+
+        do(): void {
+          this.setHeight(this.targetValue);
+        }
+        undo(): void {
+          this.setHeight(this.previousValue);
+        }
+      })()
+    );
+  });
+
   // to buttons as well
   (
     document.getElementById("clearSelectionButton") as HTMLButtonElement
@@ -450,9 +532,35 @@ window.addEventListener("load", () => {
   (
     document.getElementById("exportGraphButton") as HTMLButtonElement
   ).addEventListener("click", exportGraph);
+  (
+    document.getElementById("removeDuplicateEdges") as HTMLButtonElement
+  ).addEventListener("click", () => {
+    graph.removeDuplicateEdges();
+    recomputeElementsToDraw();
+  });
+  (
+    document.getElementById("removeSelfEdges") as HTMLButtonElement
+  ).addEventListener("click", () => {
+    graph.cleanupEdges();
+    recomputeElementsToDraw();
+  });
 
   // and the import
-  (document.getElementById("import") as HTMLInputElement).addEventListener("change", importGraph);
+  (document.getElementById("import") as HTMLInputElement).addEventListener(
+    "change",
+    importGraph
+  );
+
+  // and some generic stuff
+  // iterate elements with class "redraw-onchange" to update the graph when they change
+  const redrawElements = document.getElementsByClassName("redraw-onchange");
+  Array.from(redrawElements).forEach((element) => {
+    if (element instanceof HTMLInputElement) {
+      element.addEventListener("change", () => {
+        recomputeElementsToDraw();
+      });
+    }
+  });
 });
 
 function changeInteractionMode(mode: string) {
@@ -532,6 +640,8 @@ function importGraph(): void {
         settings = GlobalSettings.fromJSON(jsonGraph.settings);
         canvasParent.style.width = settings.canvasSize.x + "px";
         canvasParent.style.height = settings.canvasSize.y + "px";
+        setValueById("canvasWidth", settings.canvasSize.x);
+        setValueById("canvasHeight", settings.canvasSize.y);
         resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
         graph = Graph.fromJSON(jsonGraph.graph);
       } else {

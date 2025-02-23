@@ -70,16 +70,17 @@
       </div>
     </div>
 
-    <div class="accordion" id="accordionExample">
+    <div class="accordion" id="settingsAccordion">
+      <!--  -->
       <div class="accordion-item">
         <h2 class="accordion-header">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-            data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+            data-bs-target="#edgeSettingsCollapse" aria-expanded="false" aria-controls="edgeSettingsCollapse">
             Edge Settings
           </button>
         </h2>
       </div>
-      <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
+      <div id="edgeSettingsCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
         <div class="accordion-body">
           <label for="edgeColor" class="form-label">Edge color:</label>
           <input type="color" id="edgeColor" class="form-control form-control-color" value="#000000">
@@ -88,15 +89,16 @@
           <input type="number" id="lineWidth" class="form-control" min="1" value="2">
         </div>
       </div>
+      <!--  -->
       <div class="accordion-item">
         <h2 class="accordion-header">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-            data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+            data-bs-target="#vertexSettingsCollapse" aria-expanded="false" aria-controls="vertexSettingsCollapse">
             Vertex Settings
           </button>
         </h2>
       </div>
-      <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
+      <div id="vertexSettingsCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
         <div class="accordion-body">
           <div class="row">
             <div class="col">
@@ -120,15 +122,81 @@
           </div>
         </div>
       </div>
+      <!--  -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#canvasSettingsCollapse" aria-expanded="false" aria-controls="canvasSettingsCollapse">
+            Canvas Settings
+          </button>
+        </h2>
+      </div>
+      <div id="canvasSettingsCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+        <div class="accordion-body">
+          <div class="row">
+            <div class="col">
+              <label for="canvasWidth" class="form-label">Canvas width:</label>
+              <input type="number" id="canvasWidth" class="form-control" min="1">
+            </div>
+            <div class="col">
+              <label for="canvasHeight" class="form-label">Canvas height:</label>
+              <input type="number" id="canvasHeight" class="form-control" min="1">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label for="resizeElements" class="form-label">Resize elements:</label>
+              <input type="checkbox" id="resizeElements" class="" checked>
+            </div>
+            <div class="col">
+
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label for="backgroundColor" class="form-label redraw-onchange">Background color:</label>
+              <input type="color" id="backgroundColor" class="form-control form-control-color" value="#ffffff">
+            </div>
+            <div class="col">
+              <label for="borderColor" class="form-label redraw-onchange">Border color:</label>
+              <input type="color" id="borderColor" class="form-control form-control-color" value="#000000">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!--  -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#toolsCollapse" aria-expanded="false" aria-controls="toolsCollapse">
+            Tools
+          </button>
+        </h2>
+      </div>
+      <div id="toolsCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+        <div class="accordion-body">
+          <div class="row">
+            <div class="col">
+              <button id="removeDuplicateEdges" type="button" class="btn btn-secondary">Remove duplicate edges</button>
+            </div>
+            <div class="col">
+              <button id="removeSelfEdges" type="button" class="btn btn-secondary">Remove self-edges</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- finish accordion -->
     </div>
 
     <div class="mt-2">
-      <button onclick="clearCanvas()" type="button" class="btn btn-danger" id="clearCanvasButton">Clear canvas</button>
+      <button type="button" class="btn btn-danger" id="clearCanvasButton">Clear canvas</button>
 
-      <button onclick="saveCanvasAsImage()" type="button" class="btn btn-primary" id="saveImageButton">Save as
-        image</button>
+      <button type="button" class="btn btn-primary" id="saveImageButton">
+        Save as image
+      </button>
 
-      <button onclick="exportGraph()" type="button" class="btn btn-primary" id="exportGraphButton">Export graph</button>
+      <button type="button" class="btn btn-primary" id="exportGraphButton">Export graph</button>
     </div>
 
     <div class="row mt-2">

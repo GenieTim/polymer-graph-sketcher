@@ -1,7 +1,8 @@
 import { Point } from "./primitives";
 import { Circle, Drawable, Line } from "./drawables";
+import {Selectable} from "./selection";
 
-export class Node {
+export class Node implements Selectable {
   id: number;
   coordinates: Point;
   radius: number;
@@ -55,7 +56,7 @@ export class Edge {
 /**
  * A class representing a graph with nodes and edges.
  */
-export class Graph {
+class Graph {
   private nodes: { [key: string]: Node };
   private edges: Edge[];
   private scalingFactor: Point;
@@ -67,6 +68,11 @@ export class Graph {
     this.nodes = {};
     this.edges = [];
     this.scalingFactor = new Point(1, 1);
+  }
+
+  clear(): void {
+    this.nodes = {};
+    this.edges = [];
   }
 
   setNode(node: Node): void {
@@ -107,6 +113,10 @@ export class Graph {
     return this.edges;
   }
 
+  getEdgesInvolvingNode(id: number): Edge[] {
+    return this.edges.filter((edge) => edge.fromId === id || edge.toId === id);
+  }
+
   cleanupEdges(): void {
     this.edges = this.edges.filter((edge) => edge.fromId !== edge.toId);
   }
@@ -129,13 +139,12 @@ export class Graph {
     );
   }
 
-  static fromJSON(json: any): Graph {
-    const graph = new Graph();
-    graph.nodes = {};
-    graph.edges = [];
+  fromJSON(json: any):void {
+    this.nodes = {};
+    this.edges = [];
 
     for (const [key, node] of Object.entries(json.nodes)) {
-      graph.setNode(
+      this.setNode(
         new Node(
           (node as any).id,
           (node as any).coordinates,
@@ -148,26 +157,24 @@ export class Graph {
     }
 
     for (const edge of json.edges) {
-      graph.addEdge(edge.fromId, edge.toId, edge.color, edge.weight);
+      this.addEdge(edge.fromId, edge.toId, edge.color, edge.weight);
     }
 
     if ("scalingFactor" in json) {
-      graph.scalingFactor = new Point(
+      this.scalingFactor = new Point(
         json.scalingFactor.x,
         json.scalingFactor.y
       );
     }
 
     if ("zigzagSpacing" in json) {
-      graph.zigzagSpacing = json.zigzagSpacing;
+      this.zigzagSpacing = json.zigzagSpacing;
     }
     if ("zigzagLength" in json) {
-      graph.zigzagLength = json.zigzagLength;
+      this.zigzagLength = json.zigzagLength;
     }
 
-    graph.cleanupEdges();
-
-    return graph;
+    this.cleanupEdges();
   }
 
   /**
@@ -301,3 +308,5 @@ export class Graph {
     return edge;
   }
 }
+
+export const graph = new Graph();

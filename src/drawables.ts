@@ -2,7 +2,7 @@ import { Point } from "./primitives";
 import { GlobalSettings } from "./settings";
 
 export interface Drawable {
-  draw(ctx: CanvasRenderingContext2D, settings: GlobalSettings): void;
+  draw(ctx: CanvasRenderingContext2D): void;
 }
 
 export class Circle implements Drawable {
@@ -109,7 +109,8 @@ export class Line implements Drawable {
     return this.to;
   }
 
-  draw(ctx: CanvasRenderingContext2D, settings: GlobalSettings) {
+  draw(ctx: CanvasRenderingContext2D) {
+    const settings = GlobalSettings.instance;
     // handle PBC if needed
     var dx = this.to.x - this.from.x;
     var dy = this.to.y - this.from.y;
@@ -146,7 +147,7 @@ export class Line implements Drawable {
           this.oneZigZagLength,
           this.straightLengthWhenZigZag
         ),
-      ].forEach((line: Line) => line.draw(ctx, settings));
+      ].forEach((line: Line) => line.draw(ctx));
       return;
     }
 

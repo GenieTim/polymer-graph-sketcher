@@ -1,8 +1,19 @@
-import { Action, ActionManager } from "./actions";
+import {
+  Action,
+  ActionManager,
+  AddEdgeAction,
+  AddNodeAction,
+  ClearSelectionAction,
+  DeleteNodesAction,
+  NodePropertyUpdateAction,
+  SelectAllNodesAction,
+  SelectNodeAction,
+} from "./actions";
 import { Circle, Drawable, Rectangle } from "./drawables";
-import { Graph, Node } from "./graph";
+import { graph, Node } from "./graph";
 import { Point } from "./primitives";
 import { GlobalSettings } from "./settings";
+import { selection } from "./selection";
 import "./style.css";
 
 var canvas: HTMLCanvasElement = document.getElementById(
@@ -16,11 +27,9 @@ var ctx: CanvasRenderingContext2D = canvas.getContext(
 ) as CanvasRenderingContext2D;
 
 var elementsToDraw: Drawable[] = [];
-var graph = new Graph();
 var interactionMode = "vertex";
-var lastSelectedNodes: Node[] = [];
 var nNodesTotal = 0;
-var settings = new GlobalSettings();
+var settings = GlobalSettings.instance;
 var showSelection: boolean = true;
 var dragStart: Point | null = null;
 var actionManager: ActionManager = new ActionManager(() =>
@@ -31,7 +40,7 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   elementsToDraw.forEach(function (element) {
-    element.draw(ctx, settings);
+    element.draw(ctx);
   });
 
   // requestAnimationFrame(draw);
@@ -46,118 +55,24 @@ canvas.addEventListener("click", function (event) {
 
   // depending on the interaction mode, add a new node or edge
   if (interactionMode === "vertex") {
-    actionManager.addAction(
-      new (class implements Action {
-        private nodeId = nNodesTotal;
-
-        do() {
-          graph.setNode(
-            new Node(
-              this.nodeId,
-              { x, y },
-              parseFloat(
-                (document.getElementById("vertexRadius") as HTMLInputElement)
-                  .value
-              ),
-              parseFloat(
-                (
-                  document.getElementById(
-                    "vertexStrokeWidth"
-                  ) as HTMLInputElement
-                ).value
-              ),
-              (
-                document.getElementById("nodeFillColor") as HTMLInputElement
-              ).value,
-              (document.getElementById("nodeColor") as HTMLInputElement).value
-            )
-          );
-          if (lastSelectedNodes.length <= 1) {
-            lastSelectedNodes = [graph.getNode(nNodesTotal)];
-          }
-          nNodesTotal += 1;
-        }
-
-        undo() {
-          graph.deleteNode(this.nodeId);
-          nNodesTotal -= 1;
-        }
-      })()
-    );
+    actionManager.addAction(new AddNodeAction(nNodesTotal, new Point(x, y)));
+    nNodesTotal += 1;
   } else if (interactionMode === "edge") {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
-    if (lastSelectedNodes.length && newSelectedNode !== null) {
+    if (!selection.empty && newSelectedNode !== null) {
       actionManager.addAction(
-        new (class implements Action {
-          private fromNode: Node = newSelectedNode as Node;
-          private affectedNodes: Node[] = lastSelectedNodes;
-          private edgeIds: number[] = [];
-
-          do() {
-            this.affectedNodes.forEach((node) => {
-              this.edgeIds.push(
-                graph.addEdge(
-                  this.fromNode.id,
-                  node.id,
-                  (document.getElementById("edgeColor") as HTMLInputElement)
-                    .value,
-                  parseFloat(
-                    (document.getElementById("lineWidth") as HTMLInputElement)
-                      .value
-                  )
-                )
-              );
-            });
-            if (this.affectedNodes.length <= 1) {
-              lastSelectedNodes = [this.fromNode];
-            }
-          }
-
-          undo() {
-            this.edgeIds
-              .slice()
-              .reverse()
-              .forEach((edgeId) => {
-                graph.deleteEdge(edgeId);
-              });
-            lastSelectedNodes = this.affectedNodes;
-          }
-        })()
+        new AddEdgeAction(newSelectedNode, selection.getItemsOfClass(Node))
       );
     }
   } else if (interactionMode === "delete") {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
     if (newSelectedNode !== null) {
-      actionManager.addAction(
-        new (class implements Action {
-          private affectedNode: Node = newSelectedNode as Node;
-
-          do() {
-            graph.deleteNode(this.affectedNode.id);
-          }
-
-          undo() {
-            graph.setNode(this.affectedNode);
-          }
-        })()
-      );
+      actionManager.addAction(new DeleteNodesAction([newSelectedNode]));
     }
   } else if (interactionMode === "select") {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
     if (newSelectedNode) {
-      actionManager.addAction(
-        new (class implements Action {
-          private affectedNode: Node = newSelectedNode as Node;
-
-          do() {
-            lastSelectedNodes.push(newSelectedNode as Node);
-          }
-
-          undo() {
-            lastSelectedNodes.pop();
-          }
-        })()
-      );
+      actionManager.addAction(new SelectNodeAction(newSelectedNode));
     }
   }
 });
@@ -170,7 +85,7 @@ window.addEventListener("mousemove", function (event) {
   if (dragStart) {
     const dx = event.clientX - dragStart.x;
     const dy = event.clientY - dragStart.y;
-    lastSelectedNodes.forEach((node) => {
+    selection.getItemsOfClass(Node).forEach((node) => {
       node.coordinates.x += dx;
       node.coordinates.y += dy;
     });
@@ -225,46 +140,18 @@ function resizeCanvas(width: number, height: number) {
 }
 
 function clearCanvas() {
-  graph = new Graph();
-  lastSelectedNodes = [];
+  graph.clear();
+  selection.clearSelection();
   changeInteractionMode("vertex");
   recomputeElementsToDraw();
 }
 
 function selectAll() {
-  actionManager.addAction(
-    new (class implements Action {
-      private previousSelectedNodes: Node[] = lastSelectedNodes;
-
-      do() {
-        lastSelectedNodes = graph.getAllNodes();
-        recomputeElementsToDraw();
-      }
-
-      undo() {
-        lastSelectedNodes = this.previousSelectedNodes;
-        recomputeElementsToDraw();
-      }
-    })()
-  );
+  actionManager.addAction(new SelectAllNodesAction());
 }
 
 function clearSelection() {
-  actionManager.addAction(
-    new (class implements Action {
-      private previousSelectedNodes: Node[] = lastSelectedNodes;
-
-      do() {
-        lastSelectedNodes = [];
-        recomputeElementsToDraw();
-      }
-
-      undo() {
-        lastSelectedNodes = this.previousSelectedNodes;
-        recomputeElementsToDraw();
-      }
-    })()
-  );
+  actionManager.addAction(new ClearSelectionAction());
 }
 
 function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
@@ -313,8 +200,8 @@ function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
   );
 
   // red circle around selected nodes
-  if (showSelection && lastSelectedNodes.length > 0) {
-    lastSelectedNodes.forEach((node) => {
+  if (showSelection && !selection.empty) {
+    selection.getItemsOfClass(Node).forEach((node) => {
       elementsToDraw.push(
         new Circle(
           node.coordinates,
@@ -363,74 +250,64 @@ window.addEventListener("load", () => {
     changeInteractionMode(modeSwitch.value);
   });
 
-  class NodePropertyUpdater<K extends keyof Node> implements Action {
-    private affectedNodes: Node[];
-    private originalValues: Node[K][];
-    private targetValue: Node[K];
-    private property: K;
-
-    constructor(affectedNodes: Node[], targetValue: Node[K], property: K) {
-      this.affectedNodes = affectedNodes;
-      this.originalValues = affectedNodes.map((node) => node[property]);
-      this.targetValue = targetValue;
-      this.property = property;
-    }
-
-    do() {
-      this.affectedNodes.forEach((node, index) => {
-        node[this.property] = this.targetValue;
-      });
-    }
-
-    undo() {
-      this.affectedNodes.forEach((node, index) => {
-        node[this.property] = this.originalValues[index];
-      });
-    }
-  }
-
   // add event listeners
   // update selected nodes when changing node settings
   (
     document.getElementById("vertexRadius") as HTMLInputElement
   ).addEventListener("change", function () {
-    if (lastSelectedNodes.length <= 0) {
+    if (selection.empty) {
       return;
     }
     const targetValue = parseFloat(this.value);
     actionManager.addAction(
-      new NodePropertyUpdater(lastSelectedNodes, targetValue, "radius")
+      new NodePropertyUpdateAction(
+        selection.getItemsOfClass(Node),
+        targetValue,
+        "radius"
+      )
     );
   });
   (
     document.getElementById("vertexStrokeWidth") as HTMLInputElement
   ).addEventListener("change", function () {
-    if (lastSelectedNodes.length <= 0) {
+    if (selection.empty) {
       return;
     }
     const targetValue = parseFloat(this.value);
     actionManager.addAction(
-      new NodePropertyUpdater(lastSelectedNodes, targetValue, "strokeWidth")
+      new NodePropertyUpdateAction(
+        selection.getItemsOfClass(Node),
+        targetValue,
+        "strokeWidth"
+      )
     );
   });
   (
     document.getElementById("nodeFillColor") as HTMLInputElement
   ).addEventListener("change", function () {
-    if (lastSelectedNodes.length <= 0) {
+    if (selection.empty) {
       return;
     }
     actionManager.addAction(
-      new NodePropertyUpdater(lastSelectedNodes, this.value, "fillColor")
+      new NodePropertyUpdateAction(
+        selection.getItemsOfClass(Node),
+        this.value,
+        "fillColor"
+      )
     );
   });
   (document.getElementById("nodeColor") as HTMLInputElement).addEventListener(
     "change",
     function () {
-      if (lastSelectedNodes.length <= 0) {
+      if (selection.empty) {
         return;
       }
       actionManager.addAction(
-        new NodePropertyUpdater(lastSelectedNodes, this.value, "strokeColor")
+        new NodePropertyUpdateAction(
+          selection.getItemsOfClass(Node),
+          this.value,
+          "strokeColor"
+        )
       );
     }
   );
@@ -440,7 +317,9 @@ window.addEventListener("load", () => {
     "change",
     function () {
       graph
-        .getEdgesWithBothEndsInNodes(lastSelectedNodes.map((node) => node.id))
+        .getEdgesWithBothEndsInNodes(
+          selection.getItemsOfClass(Node).map((node) => node.id)
+        )
         .forEach((edge) => {
           edge.color = this.value;
         });
@@ -451,7 +330,9 @@ window.addEventListener("load", () => {
     "change",
     function () {
       graph
-        .getEdgesWithBothEndsInNodes(lastSelectedNodes.map((node) => node.id))
+        .getEdgesWithBothEndsInNodes(
+          selection.getItemsOfClass(Node).map((node) => node.id)
+        )
         .forEach((edge) => {
           edge.weight = parseFloat(this.value);
         });
@@ -588,6 +469,11 @@ function changeInteractionMode(mode: string) {
 }
 
 function saveCanvasAsImage() {
+  const rescaleCheckbox = document.getElementById(
+    "resizeElements"
+  ) as HTMLInputElement;
+  const rescaleCheckboxChecked = rescaleCheckbox.checked;
+  rescaleCheckbox.checked = true; // turn on rescaling for image export
   showSelection = false;
   settings.isScaled = true;
   const originalCanvasSize = {
@@ -612,6 +498,8 @@ function saveCanvasAsImage() {
   settings.canvasSize.y = originalCanvasSize.y;
   resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
   recomputeElementsToDraw();
+  //restore original rescaling checkbox state
+  rescaleCheckbox.checked = rescaleCheckboxChecked;
 }
 
 function exportGraph() {
@@ -643,9 +531,9 @@ function importGraph(): void {
         setValueById("canvasWidth", settings.canvasSize.x);
         setValueById("canvasHeight", settings.canvasSize.y);
         resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
-        graph = Graph.fromJSON(jsonGraph.graph);
+        graph.fromJSON(jsonGraph.graph);
       } else {
-        graph = Graph.fromJSON(jsonGraph);
+        graph.fromJSON(jsonGraph);
       }
       nNodesTotal = Math.max(...graph.getAllNodeIds()) + 1;
       recomputeElementsToDraw();
@@ -663,6 +551,8 @@ document.addEventListener("keydown", function (event) {
       exportGraph();
     } else if (event.key === "z") {
       event.shiftKey ? actionManager.redo() : actionManager.undo();
+    } else if (event.key === "y") {
+      actionManager.redo();
     }
   } else if (event.key === "a") {
     selectAll();
@@ -677,9 +567,9 @@ document.addEventListener("keydown", function (event) {
   } else if (event.key === "e") {
     changeInteractionMode("edge");
   } else if (event.key === "Backspace" || event.key === "Delete") {
-    lastSelectedNodes.forEach((node) => {
-      graph.deleteNode(node.id);
-    });
+    actionManager.addAction(
+      new DeleteNodesAction(selection.getItemsOfClass(Node))
+    );
   } else {
     console.log("Unhandled keyboard shortcut: " + event.key);
   }

@@ -4,10 +4,11 @@ import {
   AddEdgeAction,
   AddNodeAction,
   ClearSelectionAction,
+  DeleteEdgesAction,
   DeleteNodesAction,
   NodePropertyUpdateAction,
   SelectAllNodesAction,
-  SelectNodeAction,
+  SelectNodesAction,
 } from "./actions";
 import { Circle, Drawable, Rectangle } from "./drawables";
 import { graph, Node } from "./graph";
@@ -15,6 +16,10 @@ import { Point } from "./primitives";
 import { GlobalSettings } from "./settings";
 import { selection } from "./selection";
 import "./style.css";
+import { SVGCanvasRenderingContext2D } from "./svg-ctx";
+import { doForceBalanceStep } from "./simulations";
+import { collapseEdgesByColor, removeTwofunctionalNodes } from "./topology";
+import { Colour } from "./Colours";
 
 var canvas: HTMLCanvasElement = document.getElementById(
   "canvas"
@@ -64,15 +69,27 @@ canvas.addEventListener("click", function (event) {
         new AddEdgeAction(newSelectedNode, selection.getItemsOfClass(Node))
       );
     }
-  } else if (interactionMode === "delete") {
+  } else if (interactionMode === "delete_vertex") {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
     if (newSelectedNode !== null) {
       actionManager.addAction(new DeleteNodesAction([newSelectedNode]));
     }
+  } else if (interactionMode === "delete_edge") {
+    var newSelectedNode = graph.findNodeByCoordinates(x, y);
+    if (
+      (newSelectedNode !== null && !selection.empty) ||
+      selection.length > 1
+    ) {
+      actionManager.addAction(
+        new DeleteEdgesAction(selection.getItemsOfClass(Node), newSelectedNode)
+      );
+    } else if (newSelectedNode) {
+      actionManager.addAction(new SelectNodesAction([newSelectedNode]));
+    }
   } else if (interactionMode === "select") {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
     if (newSelectedNode) {
-      actionManager.addAction(new SelectNodeAction(newSelectedNode));
+      actionManager.addAction(new SelectNodesAction([newSelectedNode]));
     }
   }
 });
@@ -113,6 +130,12 @@ function resizeCanvas(width: number, height: number) {
   const resizeElements: boolean = (
     document.getElementById("resizeElements") as HTMLInputElement
   ).checked;
+  console.log("Resizing canvas", [
+    resizeElements,
+    xScaling,
+    yScaling,
+    scaling1D,
+  ]);
 
   // reposition elements to maintain their position relative to the canvas
   var allNodes = graph.getAllNodes();
@@ -234,16 +257,16 @@ window.addEventListener("load", () => {
   clearCanvas();
 
   // detect resizing of the canvas
-  const observer = new ResizeObserver(function (mutations) {
-    console.log("mutations:", mutations);
-    settings.canvasSize.x = canvasParent.clientWidth;
-    settings.canvasSize.y = canvasParent.clientHeight;
-    resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
-    recomputeElementsToDraw();
-    document.getElementById("canvas-size")!.textContent =
-      `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
-  });
-  observer.observe(canvasParent);
+  // const observer = new ResizeObserver(function (mutations) {
+  //   console.log("mutations:", mutations);
+  //   settings.canvasSize.x = canvasParent.clientWidth;
+  //   settings.canvasSize.y = canvasParent.clientHeight;
+  //   resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
+  //   recomputeElementsToDraw();
+  //   document.getElementById("canvas-size")!.textContent =
+  //     `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+  // });
+  // observer.observe(canvasParent);
 
   var modeSwitch = document.getElementById("modeSwitch") as HTMLSelectElement;
   modeSwitch.addEventListener("click", function () {
@@ -311,6 +334,27 @@ window.addEventListener("load", () => {
       );
     }
   );
+  (
+    document.getElementById("selectVerticesStroke") as HTMLInputElement
+  ).addEventListener("change", function () {
+    console.log("selectVerticesStroke", [
+      this.value,
+      graph.getAllNodes().map((node) => node.strokeColor),
+    ]);
+    actionManager.addAction(
+      new SelectNodesAction(
+        graph.getAllNodes().filter((node) => {
+          return (
+            Colour.deltaE00(
+              Colour.hex2lab(node.strokeColor),
+              Colour.hex2lab(this.value)
+            ) < 10
+          );
+        }),
+        true
+      )
+    );
+  });
 
   // edge properties
   (document.getElementById("edgeColor") as HTMLInputElement).addEventListener(
@@ -339,6 +383,13 @@ window.addEventListener("load", () => {
       recomputeElementsToDraw();
     }
   );
+  (
+    document.getElementById("mergeConnectionColor") as HTMLInputElement
+  ).addEventListener("change", (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    collapseEdgesByColor(target.value);
+    recomputeElementsToDraw();
+  });
 
   // canvas properties
   (document.getElementById("canvasWidth") as HTMLInputElement).addEventListener(
@@ -397,6 +448,16 @@ window.addEventListener("load", () => {
     );
   });
 
+  // some other settings
+  (document.getElementById("disablePBC") as HTMLInputElement).addEventListener(
+    "change",
+    function () {
+      settings.disablePBC = this.checked as any;
+      recomputeElementsToDraw();
+    }
+  );
+
+  // add event listeners
   // to buttons as well
   (
     document.getElementById("clearSelectionButton") as HTMLButtonElement
@@ -408,12 +469,6 @@ window.addEventListener("load", () => {
     document.getElementById("clearCanvasButton") as HTMLButtonElement
   ).addEventListener("click", clearCanvas);
   (
-    document.getElementById("saveImageButton") as HTMLButtonElement
-  ).addEventListener("click", saveCanvasAsImage);
-  (
-    document.getElementById("exportGraphButton") as HTMLButtonElement
-  ).addEventListener("click", exportGraph);
-  (
     document.getElementById("removeDuplicateEdges") as HTMLButtonElement
   ).addEventListener("click", () => {
     graph.removeDuplicateEdges();
@@ -424,6 +479,36 @@ window.addEventListener("load", () => {
   ).addEventListener("click", () => {
     graph.cleanupEdges();
     recomputeElementsToDraw();
+  });
+  (
+    document.getElementById("saveImageButton") as HTMLButtonElement
+  ).addEventListener("click", saveCanvasAsImage);
+  (
+    document.getElementById("forceBalanceStep") as HTMLButtonElement
+  ).addEventListener("click", () => {
+    // TODO: make reversible
+    const nSteps = (
+      document.getElementById("nForceBalanceSteps") as HTMLInputElement
+    ).valueAsNumber;
+    for (let i = 0; i < nSteps; i++) {
+      console.log("Running force balance step " + i + " of " + nSteps);
+      doForceBalanceStep();
+      recomputeElementsToDraw();
+    }
+  });
+  (
+    document.getElementById("bifunctionalRemoval") as HTMLButtonElement
+  ).addEventListener("click", () => {
+    removeTwofunctionalNodes();
+    recomputeElementsToDraw();
+  });
+  (
+    document.getElementById("exportGraphButton") as HTMLButtonElement
+  ).addEventListener("click", exportGraph);
+  (
+    document.getElementById("saveSvgButton") as HTMLButtonElement
+  ).addEventListener("click", () => {
+    saveGraphAsSvg();
   });
 
   // and the import
@@ -502,6 +587,23 @@ function saveCanvasAsImage() {
   rescaleCheckbox.checked = rescaleCheckboxChecked;
 }
 
+function saveGraphAsSvg() {
+  const prevCtx = ctx;
+  ctx = new SVGCanvasRenderingContext2D(
+    settings.canvasSize.x,
+    settings.canvasSize.y
+  );
+  draw();
+  const svg: SVGSVGElement = (ctx as SVGCanvasRenderingContext2D).getSVG();
+  ctx = prevCtx;
+  // download the svg
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const a = document.createElement("a");
+  a.href = "data:image/svg+xml;base64," + btoa(svgData);
+  a.download = "graph.svg";
+  a.click();
+}
+
 function exportGraph() {
   var blob = new Blob([JSON.stringify({ graph: graph, settings: settings })], {
     type: "application/json",
@@ -535,7 +637,8 @@ function importGraph(): void {
       } else {
         graph.fromJSON(jsonGraph);
       }
-      nNodesTotal = Math.max(...graph.getAllNodeIds()) + 1;
+      nNodesTotal =
+        Math.max(...graph.getAllNodeIds().filter((id) => !isNaN(id))) + 1;
       recomputeElementsToDraw();
     }
   };
@@ -559,7 +662,9 @@ document.addEventListener("keydown", function (event) {
   } else if (event.key === "c" || event.key == "Escape") {
     clearSelection();
   } else if (event.key === "d") {
-    changeInteractionMode("delete");
+    changeInteractionMode("delete_vertex");
+  } else if (event.key === "l") {
+    changeInteractionMode("delete_edge");
   } else if (event.key === "s") {
     changeInteractionMode("select");
   } else if (event.key === "v") {

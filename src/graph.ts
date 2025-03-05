@@ -1,6 +1,6 @@
 import { Point } from "./primitives";
 import { Circle, Drawable, Line } from "./drawables";
-import {Selectable} from "./selection";
+import { Selectable } from "./selection";
 
 export class Node implements Selectable {
   id: number;
@@ -21,7 +21,9 @@ export class Node implements Selectable {
     // validate that `id` is integer
     if (typeof id !== "number" || !Number.isInteger(id) || id < 0) {
       throw new Error(
-        "Invalid `id` parameter. It must be a non-negative integer."
+        "Invalid `id` parameter. It must be a non-negative integer, got `" +
+          id +
+          "`."
       );
     }
 
@@ -39,15 +41,18 @@ export class Edge {
   toId: number;
   weight: number;
   color: string;
+  id: number;
 
   constructor(
     fromId: number,
     toId: number,
+    id: number,
     weight: number = 1,
     color: string = "#000"
   ) {
     this.fromId = fromId;
     this.toId = toId;
+    this.id = id;
     this.weight = weight;
     this.color = color;
   }
@@ -89,7 +94,7 @@ class Graph {
       throw new Error("One or both nodes do not exist in the graph.");
     }
 
-    this.edges.push(new Edge(fromId, toId, weight, color));
+    this.edges.push(new Edge(fromId, toId, this.edges.length, weight, color));
     return this.edges.length - 1;
   }
 
@@ -101,8 +106,12 @@ class Graph {
     return this.nodes[id];
   }
 
+  getNrOfNodes(): number {
+    return Object.keys(this.nodes).length;
+  }
+
   getAllNodeIds(): number[] {
-    return Object.keys(this.nodes).map(parseInt);
+    return Object.values(this.nodes).map((node) => node.id);
   }
 
   getAllNodes(): Node[] {
@@ -113,8 +122,20 @@ class Graph {
     return this.edges;
   }
 
+  getNodesConnectedToNode(id: number): Node[] {
+    return this.getEdgesInvolvingNode(id).map(
+      (edge) => this.nodes[edge.fromId === id ? edge.toId : edge.fromId]
+    );
+  }
+
   getEdgesInvolvingNode(id: number): Edge[] {
     return this.edges.filter((edge) => edge.fromId === id || edge.toId === id);
+  }
+
+  getEdgesInvolvingNodes(ids: number[]): Edge[] {
+    return this.edges.filter(
+      (edge) => ids.includes(edge.fromId) && ids.includes(edge.toId)
+    );
   }
 
   cleanupEdges(): void {
@@ -139,7 +160,7 @@ class Graph {
     );
   }
 
-  fromJSON(json: any):void {
+  fromJSON(json: any): void {
     this.nodes = {};
     this.edges = [];
 
@@ -292,7 +313,21 @@ class Graph {
     }
   }
 
-  deleteEdge(edgeId: number): Edge {
+  /**
+   * Deletes an edge from the graph.
+   *
+   * @param edgeId - The identifier of the edge to be deleted. Can be either:
+   *                 - A number representing the index of the edge in the edges array.
+   *                 - An Edge object to be removed from the graph.
+   *
+   * @returns The deleted Edge object.
+   *
+   * @throws {Error} If the provided edgeId is invalid (out of bounds of the edges array).
+   */
+  deleteEdge(edgeId: number | Edge): Edge {
+    if (edgeId instanceof Edge) {
+      edgeId = this.edges.indexOf(edgeId);
+    }
     if (edgeId < 0 || edgeId >= this.edges.length) {
       throw new Error(
         "Invalid edge ID " +

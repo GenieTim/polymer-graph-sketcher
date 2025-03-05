@@ -136,15 +136,26 @@ export class DeleteNodesAction implements Action {
   }
 }
 
-export class SelectNodeAction implements Action {
-  constructor(private affectedNode: Node) {}
+export class SelectNodesAction implements Action {
+  private previousSelectedNodes: Selectable[] = selection.getSelectedItems();
+
+  constructor(
+    private affectedNodes: Node[],
+    private clearSelection = false
+  ) {}
 
   do(): void {
-    selection.addItem(this.affectedNode);
+    if (this.clearSelection) {
+      selection.setSelectedItems(this.affectedNodes);
+    } else {
+      this.affectedNodes.forEach((node) => {
+        selection.addItem(node);
+      });
+    }
   }
 
   undo(): void {
-    selection.removeLastItem();
+    selection.setSelectedItems(this.previousSelectedNodes);
   }
 }
 
@@ -210,5 +221,39 @@ export class AddEdgeAction implements Action {
         graph.deleteEdge(edgeId);
       });
     selection.setSelectedItems(this.affectedNodes);
+  }
+}
+
+export class DeleteEdgesAction implements Action {
+  private edges: Edge[] = [];
+
+  constructor(
+    affectedNodes: Node[],
+    private additionalNode: Node | null
+  ) {
+    if (additionalNode) {
+      affectedNodes.push(additionalNode);
+    }
+    this.edges = graph.getEdgesInvolvingNodes(
+      affectedNodes.map((node) => node.id)
+    );
+  }
+
+  do() {
+    this.edges.forEach((edge) => {
+      graph.deleteEdge(edge);
+    });
+    if (this.additionalNode) {
+      selection.addItem(this.additionalNode);
+    }
+  }
+
+  undo() {
+    this.edges.forEach((edge) => {
+      graph.addEdge(edge.fromId, edge.toId, edge.color, edge.weight);
+    });
+    if (this.additionalNode) {
+      selection.removeItem(this.additionalNode);
+    }
   }
 }

@@ -116,7 +116,7 @@ export class Line implements Drawable {
     var dy = this.to.y - this.from.y;
     const yPBC = Math.abs(dy) > 0.5001 * settings.canvasSize.y;
     const xPBC = Math.abs(dx) > 0.5001 * settings.canvasSize.x;
-    if (yPBC || xPBC) {
+    if ((yPBC || xPBC) && !settings.disablePBC) {
       // rather than taking the long path, we apply periodic boundary conditions
       // and draw two lines to the boundary instead of the long path
       [
@@ -155,10 +155,11 @@ export class Line implements Drawable {
 
     if (this.dashed) {
       ctx.setLineDash([4, 2]);
-    } else {
-      ctx.setLineDash([]);
     }
 
+    ctx.lineCap = "round";
+    ctx.lineWidth = this.lineWidth;
+    ctx.strokeStyle = this.color;
     if (this.zigZagged) {
       this.drawZigZagged(ctx);
     } else {
@@ -166,8 +167,6 @@ export class Line implements Drawable {
       ctx.moveTo(this.from.x, this.from.y);
       ctx.lineTo(this.to.x, this.to.y);
     }
-    ctx.lineWidth = this.lineWidth;
-    ctx.strokeStyle = this.color;
     ctx.stroke();
   }
 
@@ -247,10 +246,14 @@ export class Rectangle implements Drawable {
     ctx.rect(this.topLeft.x, this.topLeft.y, this.width, this.height);
     if (this.fillColor) {
       ctx.fillStyle = this.fillColor;
-      ctx.fill();
+    } else {
+      ctx.fillStyle = "transparent";
     }
-    ctx.strokeStyle = this.strokeColor;
+    ctx.fill();
     ctx.lineWidth = this.lineWidth;
-    ctx.stroke();
+    if (this.strokeColor) {
+      ctx.strokeStyle = this.strokeColor;
+      ctx.stroke();
+    }
   }
 }

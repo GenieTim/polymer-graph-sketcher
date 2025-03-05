@@ -9,6 +9,7 @@ export class GlobalSettings {
   canvasSize: Point;
   backgroundColor: string;
   imageScaleFactor: number;
+  disablePBC: boolean = false;
 
   static #instance: GlobalSettings;
 
@@ -42,6 +43,9 @@ export class GlobalSettings {
       json.backgroundColor,
       json.imageScaleFactor
     );
+    if ("disablePBC" in json) {
+      GlobalSettings.#instance.disablePBC = json.disablePBC;
+    }
     return GlobalSettings.#instance;
   }
 }

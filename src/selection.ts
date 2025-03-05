@@ -40,6 +40,10 @@ class Selection {
   public get empty(): boolean {
     return this.selectedItems.length === 0;
   }
+
+  public get length(): number {
+    return this.selectedItems.length;
+  }
 }
 
 export const selection = new Selection();

@@ -11,6 +11,14 @@ class Selection {
     this.selectedItems = [item];
   }
 
+  hasItem(item: Selectable): boolean {
+    return this.selectedItems.includes(item);
+  }
+
+  hasItems(items: Selectable[]): boolean {
+    return items.every((i) => this.hasItem(i));
+  }
+
   setSelectedItems(items: Selectable[]): void {
     this.selectedItems = items;
   }
@@ -28,7 +36,7 @@ class Selection {
   getSelectedItems(): Selectable[] {
     return this.selectedItems;
   }
-  
+
   getItemsOfClass<T extends Selectable>(cls: new (...args: any[]) => T): T[] {
     return this.selectedItems.filter((item) => item instanceof cls) as T[];
   }

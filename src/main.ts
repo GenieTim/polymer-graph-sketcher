@@ -9,6 +9,7 @@ import {
   NodePropertyUpdateAction,
   SelectAllNodesAction,
   SelectNodesAction,
+  UnselectNodesAction,
 } from "./actions";
 import { Circle, Drawable, Rectangle } from "./drawables";
 import { graph, Node } from "./graph";
@@ -64,10 +65,14 @@ canvas.addEventListener("click", function (event) {
     nNodesTotal += 1;
   } else if (interactionMode === "edge") {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
-    if (!selection.empty && newSelectedNode !== null) {
-      actionManager.addAction(
-        new AddEdgeAction(newSelectedNode, selection.getItemsOfClass(Node))
-      );
+    if (newSelectedNode !== null) {
+      if (!selection.empty) {
+        actionManager.addAction(
+          new AddEdgeAction(newSelectedNode, selection.getItemsOfClass(Node))
+        );
+      } else {
+        actionManager.addAction(new SelectNodesAction([newSelectedNode]));
+      }
     }
   } else if (interactionMode === "delete_vertex") {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
@@ -87,9 +92,15 @@ canvas.addEventListener("click", function (event) {
       actionManager.addAction(new SelectNodesAction([newSelectedNode]));
     }
   } else if (interactionMode === "select") {
-    var newSelectedNode = graph.findNodeByCoordinates(x, y);
-    if (newSelectedNode) {
-      actionManager.addAction(new SelectNodesAction([newSelectedNode]));
+    var newSelectedNodes = graph.findNodesByCoordinates(x, y);
+    if (newSelectedNodes.length) {
+      if (selection.hasItems(newSelectedNodes)) {
+        console.log("Unselecting node");
+        actionManager.addAction(new UnselectNodesAction(newSelectedNodes));
+      } else {
+        console.log("Selecting node");
+        actionManager.addAction(new SelectNodesAction(newSelectedNodes));
+      }
     }
   }
 });

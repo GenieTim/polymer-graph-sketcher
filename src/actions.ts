@@ -159,6 +159,29 @@ export class SelectNodesAction implements Action {
   }
 }
 
+export class UnselectNodesAction implements Action {
+  private previousSelectedNodes: Selectable[] = selection.getSelectedItems();
+
+  constructor(private affectedNodes: Node[]) {
+    this.affectedNodes.forEach((node) => {
+      if (!this.previousSelectedNodes.includes(node)) {
+        console.warn("Trying to unselect a node that is not selected");
+      }
+    });
+    console.log("Unselecting nodes:", this.affectedNodes);
+  }
+  do(): void {
+    selection.setSelectedItems(
+      this.previousSelectedNodes.filter(
+        (node) => !(node instanceof Node && this.affectedNodes.includes(node))
+      )
+    );
+  }
+  undo(): void {
+    selection.setSelectedItems(this.previousSelectedNodes);
+  }
+}
+
 export class SelectAllNodesAction implements Action {
   constructor(
     private previousSelectedNodes: Node[] = selection.getItemsOfClass(Node)

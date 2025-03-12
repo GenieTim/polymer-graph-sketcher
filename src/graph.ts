@@ -273,9 +273,10 @@ class Graph {
    *
    * @param {number} x - The x-coordinate to search for.
    * @param {number} y - The y-coordinate to search for.
-   * @returns {Node|null} The node found at the given coordinates, or null if no node is found within 5 units of the given coordinates.
+   * @returns {Node[]} The nodes found at the given coordinates, or null if no node is found within 5 units of the given coordinates.
    */
-  findNodeByCoordinates(x: number, y: number) {
+  findNodesByCoordinates(x: number, y: number): Node[] {
+    let results: Node[] = [];
     for (const [key, node] of Object.entries(this.nodes)) {
       const distance = Math.sqrt(
         Math.pow(node.coordinates.x - x, 2) +
@@ -283,11 +284,16 @@ class Graph {
       );
 
       if (distance <= 5) {
-        return node;
+        results.push(node);
       }
     }
 
-    return null;
+    return results;
+  }
+
+  findNodeByCoordinates(x: number, y: number): Node | null {
+    const nodes = this.findNodesByCoordinates(x, y);
+    return nodes.length > 0 ? nodes[0] : null;
   }
 
   /**

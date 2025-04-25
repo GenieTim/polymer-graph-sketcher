@@ -1,3 +1,5 @@
+import { Point } from "./primitives";
+
 interface DrawingState {
   fillStyle: string | CanvasGradient | CanvasPattern;
   strokeStyle: string | CanvasGradient | CanvasPattern;
@@ -36,6 +38,14 @@ export class SVGCanvasRenderingContext2D implements CanvasRenderingContext2D {
       this.svg.appendChild(element);
     }
     this.lastElement = element;
+  }
+
+  pointIsOnCanvas(p: Point): boolean {
+    const rect = {
+      width: parseFloat(this.svg.getAttribute("width") as string),
+      height: parseFloat(this.svg.getAttribute("height") as string),
+    };
+    return p.x >= 0 && p.x <= rect.width && p.y >= 0 && p.y <= rect.height;
   }
 
   // Method to create a rectangle
@@ -119,15 +129,33 @@ export class SVGCanvasRenderingContext2D implements CanvasRenderingContext2D {
     const rotatedY2: number =
       Math.sin(this.currentRotationRad) * x +
       Math.cos(this.currentRotationRad) * y;
-    line.setAttribute("x1", (rotatedX + this.currentXOffset).toString());
-    line.setAttribute("y1", (rotatedY + this.currentYOffset).toString());
-    line.setAttribute("x2", (rotatedX2 + this.currentXOffset).toString());
-    line.setAttribute("y2", (rotatedY2 + this.currentYOffset).toString());
+    const p1 = new Point(
+      rotatedX + this.currentXOffset,
+      rotatedY + this.currentYOffset
+    );
+    const p2 = new Point(
+      rotatedX2 + this.currentXOffset,
+      rotatedY2 + this.currentYOffset
+    );
+    line.setAttribute("x1", p1.x.toString());
+    line.setAttribute("y1", p1.y.toString());
+    line.setAttribute("x2", p2.x.toString());
+    line.setAttribute("y2", p2.y.toString());
     line.setAttribute("style", this.stylesToCSS(false, true)); // default stroke color
     if (this.lineCap) {
       line.setAttribute("stroke-linecap", this.lineCap);
     }
-    this.addElement(line);
+    // only add line if it is within the canvas
+    if (
+      this.pointIsOnCanvas(p1) ||
+      this.pointIsOnCanvas(p2) ||
+      (p1.x <= 0 &&
+        p2.x >= parseFloat(this.svg.getAttribute("width") as string)) ||
+      (p1.y <= 0 &&
+        p2.y >= parseFloat(this.svg.getAttribute("height") as string))
+    ) {
+      this.addElement(line);
+    }
     this.currentX = x;
     this.currentY = y;
   }

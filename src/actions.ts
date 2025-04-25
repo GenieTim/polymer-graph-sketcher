@@ -80,11 +80,38 @@ export class NodePropertyUpdateAction<K extends keyof Node> implements Action {
   }
 }
 
+export class AddNodesAction implements Action {
+  constructor(private nodes: Node[]) {}
+
+  do() {
+    this.nodes.forEach((node) => {
+      graph.setNode(
+        new Node(
+          node.id,
+          node.coordinates,
+          node.radius,
+          node.strokeWidth,
+          node.fillColor,
+          node.strokeColor
+        )
+      );
+    });
+    selection.setSelectedItems(
+      this.nodes.map((node) => {
+        return graph.getNode(node.id);
+      })
+    );
+  }
+
+  undo() {
+    this.nodes.forEach((node) => {
+      graph.deleteNode(node.id);
+    });
+  }
+}
+
 export class AddNodeAction implements Action {
-  constructor(
-    private nodeId: number,
-    private position: Point
-  ) {}
+  constructor(private nodeId: number, private position: Point) {}
 
   do() {
     graph.setNode(
@@ -139,10 +166,7 @@ export class DeleteNodesAction implements Action {
 export class SelectNodesAction implements Action {
   private previousSelectedNodes: Selectable[] = selection.getSelectedItems();
 
-  constructor(
-    private affectedNodes: Node[],
-    private clearSelection = false
-  ) {}
+  constructor(private affectedNodes: Node[], private clearSelection = false) {}
 
   do(): void {
     if (this.clearSelection) {
@@ -210,13 +234,57 @@ export class ClearSelectionAction implements Action {
   }
 }
 
+export class InvertSelectionAction implements Action {
+  constructor(
+    private previousSelectedNodes: Selectable[] = selection.getSelectedItems()
+  ) {}
+
+  do() {
+    selection.toggleItems(graph.getAllNodes());
+  }
+
+  undo() {
+    selection.setSelectedItems(this.previousSelectedNodes);
+  }
+}
+
+export class AddEdgesAction implements Action {
+  private edgeIds: number[] = [];
+  constructor(private edgesFrom: number[], private edgesTo: number[]) {
+    if (edgesFrom.length !== edgesTo.length) {
+      throw new Error("edgesFrom and edgesTo must have the same length");
+    }
+  }
+
+  do() {
+    for (let i = 0; i < this.edgesFrom.length; i++) {
+      this.edgeIds.push(
+        graph.addEdge(
+          this.edgesFrom[i],
+          this.edgesTo[i],
+          (document.getElementById("edgeColor") as HTMLInputElement).value,
+          parseFloat(
+            (document.getElementById("lineWidth") as HTMLInputElement).value
+          )
+        )
+      );
+    }
+  }
+
+  undo() {
+    this.edgeIds
+      .slice()
+      .reverse()
+      .forEach((edgeId) => {
+        graph.deleteEdge(edgeId);
+      });
+  }
+}
+
 export class AddEdgeAction implements Action {
   private edgeIds: number[] = [];
 
-  constructor(
-    private fromNode: Node,
-    private affectedNodes: Node[]
-  ) {}
+  constructor(private fromNode: Node, private affectedNodes: Node[]) {}
 
   do() {
     this.affectedNodes.forEach((node) => {
@@ -250,10 +318,7 @@ export class AddEdgeAction implements Action {
 export class DeleteEdgesAction implements Action {
   private edges: Edge[] = [];
 
-  constructor(
-    affectedNodes: Node[],
-    private additionalNode: Node | null
-  ) {
+  constructor(affectedNodes: Node[], private additionalNode: Node | null) {
     if (additionalNode) {
       affectedNodes.push(additionalNode);
     }

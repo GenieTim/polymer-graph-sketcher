@@ -56,6 +56,10 @@ export class Edge {
     this.weight = weight;
     this.color = color;
   }
+
+  getOtherNodeId(nodeId: number): number {
+    return this.fromId === nodeId ? this.toId : this.fromId;
+  }
 }
 
 /**
@@ -68,6 +72,7 @@ class Graph {
   public zigzagSpacing: number = 4;
   public zigzagLength: number = 3;
   public zigzagEndLengths: number = 1.5;
+  private maxNodeId = 0;
 
   constructor() {
     this.nodes = {};
@@ -82,6 +87,7 @@ class Graph {
 
   setNode(node: Node): void {
     this.nodes[node.id] = node;
+    this.maxNodeId = Math.max(this.maxNodeId, node.id);
   }
 
   addEdge(
@@ -112,6 +118,9 @@ class Graph {
 
   getAllNodeIds(): number[] {
     return Object.values(this.nodes).map((node) => node.id);
+  }
+  getNextNodeId(): number {
+    return this.maxNodeId + 1;
   }
 
   getAllNodes(): Node[] {
@@ -145,7 +154,10 @@ class Graph {
   removeDuplicateEdges(): void {
     const seen = new Set();
     this.edges = this.edges.filter((edge) => {
-      const combinedId = `${Math.min(edge.fromId, edge.toId)}-${Math.max(edge.fromId, edge.toId)}`;
+      const combinedId = `${Math.min(edge.fromId, edge.toId)}-${Math.max(
+        edge.fromId,
+        edge.toId
+      )}`;
       if (seen.has(combinedId)) {
         return false;
       }

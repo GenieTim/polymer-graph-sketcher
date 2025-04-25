@@ -5,7 +5,7 @@ Create 2D sketches of Polymers: sketch bead-spring models.
 Example:
 ![Illustration of a bead-spring model created with this software](./examples/graph-example-1.svg)
 
-## Useage
+## Usage
 
 (Website will be added here)
 

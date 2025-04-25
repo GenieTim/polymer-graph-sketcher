@@ -2,10 +2,13 @@ import {
   Action,
   ActionManager,
   AddEdgeAction,
+  AddEdgesAction,
   AddNodeAction,
+  AddNodesAction,
   ClearSelectionAction,
   DeleteEdgesAction,
   DeleteNodesAction,
+  InvertSelectionAction,
   NodePropertyUpdateAction,
   SelectAllNodesAction,
   SelectNodesAction,
@@ -18,7 +21,7 @@ import { GlobalSettings } from "./settings";
 import { selection } from "./selection";
 import "./style.css";
 import { SVGCanvasRenderingContext2D } from "./svg-ctx";
-import { doForceBalanceStep } from "./simulations";
+import { doForceBalanceStep, doRandomWalk } from "./simulations";
 import { collapseEdgesByColor, removeTwofunctionalNodes } from "./topology";
 import { Colour } from "./Colours";
 
@@ -102,6 +105,16 @@ canvas.addEventListener("click", function (event) {
         actionManager.addAction(new SelectNodesAction(newSelectedNodes));
       }
     }
+  } else if (interactionMode === "random_walk") {
+    const walk = doRandomWalk(new Point(x, y));
+    actionManager.addAction(new AddNodesAction(walk.nodes));
+    actionManager.addAction(
+      new AddEdgesAction(
+        walk.edges.map((edge) => edge.fromId),
+        walk.edges.map((edge) => edge.toId)
+      )
+    );
+    nNodesTotal += walk.nodes.length + 1;
   }
 });
 
@@ -116,6 +129,19 @@ window.addEventListener("mousemove", function (event) {
     selection.getItemsOfClass(Node).forEach((node) => {
       node.coordinates.x += dx;
       node.coordinates.y += dy;
+      // move into box boundaries
+      if (node.coordinates.x < 0) {
+        node.coordinates.x += GlobalSettings.instance.canvasSize.x;
+      }
+      if (node.coordinates.x >= GlobalSettings.instance.canvasSize.x) {
+        node.coordinates.x -= GlobalSettings.instance.canvasSize.x;
+      }
+      if (node.coordinates.y < 0) {
+        node.coordinates.y += GlobalSettings.instance.canvasSize.y;
+      }
+      if (node.coordinates.y >= GlobalSettings.instance.canvasSize.y) {
+        node.coordinates.y -= GlobalSettings.instance.canvasSize.y;
+      }
     });
     dragStart = { x: event.clientX, y: event.clientY };
     recomputeElementsToDraw();
@@ -188,6 +214,10 @@ function clearSelection() {
   actionManager.addAction(new ClearSelectionAction());
 }
 
+function invertSelection() {
+  actionManager.addAction(new InvertSelectionAction());
+}
+
 function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
   var scalingFactor1D = Math.max(scaling.x, scaling.y);
 
@@ -257,6 +287,92 @@ function setValueById(id: string, value: string | number) {
   if (element instanceof HTMLInputElement) {
     element.value = value as string;
   }
+}
+
+function generateSideChains() {
+  const sideChainLength = (
+    document.getElementById("sideChainLength") as HTMLInputElement
+  ).valueAsNumber;
+  const sideChainProbability = (
+    document.getElementById("sideChainProb") as HTMLInputElement
+  ).valueAsNumber;
+
+  const selectedNodes = selection.getItemsOfClass(Node);
+  // for each selected node, if it has two edges,
+  // generate side chains (one node in a distance of `sideChainLength`)
+  // perpendicular to the existing edges,
+  // if the random probability is met.
+  // If the probability is higher than 1, sample more than once.
+  selectedNodes.forEach((node) => {
+    const edges = graph.getEdgesInvolvingNode(node.id);
+    if (edges.length !== 2) {
+      return;
+    }
+
+    // Get the two connected nodes
+    const connectedNode1 = graph.getNode(edges[0].getOtherNodeId(node.id));
+    const connectedNode2 = graph.getNode(edges[1].getOtherNodeId(node.id));
+
+    if (!connectedNode1 || !connectedNode2) {
+      return;
+    }
+
+    // Calculate the direction vector of the main chain
+    const dirX = connectedNode2.coordinates.x - connectedNode1.coordinates.x;
+    const dirY = connectedNode2.coordinates.y - connectedNode1.coordinates.y;
+
+    // Normalize the direction vector
+    const length = Math.sqrt(dirX * dirX + dirY * dirY);
+    const normalizedDirX = dirX / length;
+    const normalizedDirY = dirY / length;
+
+    // Calculate perpendicular vectors (both directions)
+    const perpDirX1 = -normalizedDirY;
+    const perpDirY1 = normalizedDirX;
+    const perpDirX2 = normalizedDirY;
+    const perpDirY2 = -normalizedDirX;
+
+    // Determine how many side chains to create based on probability
+    const numSideChains = Math.floor(sideChainProbability);
+    const remainingProb = sideChainProbability - numSideChains;
+
+    // Add additional chain if random check passes for remaining probability
+    const totalChains = numSideChains + (Math.random() < remainingProb ? 1 : 0);
+
+    const newNodes = [];
+    const newNodeIds = [];
+
+    for (let i = 0; i < totalChains; i++) {
+      // Randomly choose one of the two perpendicular directions
+      const useFirstDirection = Math.random() < 0.5;
+      const perpDirX = useFirstDirection ? perpDirX1 : perpDirX2;
+      const perpDirY = useFirstDirection ? perpDirY1 : perpDirY2;
+
+      // Calculate the position of the new node
+      const newNodeX = node.coordinates.x + perpDirX * sideChainLength;
+      const newNodeY = node.coordinates.y + perpDirY * sideChainLength;
+
+      // Create the new node
+      const newNodeId = nNodesTotal++;
+      const newNode = new Node(
+        newNodeId,
+        new Point(newNodeX, newNodeY),
+        node.radius,
+        node.strokeWidth,
+        node.fillColor,
+        node.strokeColor
+      );
+
+      newNodes.push(newNode);
+      newNodeIds.push(newNodeId);
+
+      // Add the node and connect it to the original node
+      actionManager.addAction(
+        new AddNodeAction(newNodeId, new Point(newNodeX, newNodeY))
+      );
+      actionManager.addAction(new AddEdgeAction(node, [newNode]));
+    }
+  });
 }
 
 window.addEventListener("load", () => {
@@ -417,8 +533,9 @@ window.addEventListener("load", () => {
             settings.canvasSize.x = width;
             resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
             recomputeElementsToDraw();
-            document.getElementById("canvas-size")!.textContent =
-              `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+            document.getElementById(
+              "canvas-size"
+            )!.textContent = `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
           }
 
           do(): void {
@@ -445,8 +562,9 @@ window.addEventListener("load", () => {
           settings.canvasSize.y = height;
           resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
           recomputeElementsToDraw();
-          document.getElementById("canvas-size")!.textContent =
-            `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+          document.getElementById(
+            "canvas-size"
+          )!.textContent = `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
         }
 
         do(): void {
@@ -474,11 +592,15 @@ window.addEventListener("load", () => {
     document.getElementById("clearSelectionButton") as HTMLButtonElement
   ).addEventListener("click", clearSelection);
   (
+    document.getElementById("invertSelectionButton") as HTMLButtonElement
+  ).addEventListener("click", invertSelection);
+  (
     document.getElementById("selectAllButton") as HTMLButtonElement
   ).addEventListener("click", selectAll);
   (
     document.getElementById("clearCanvasButton") as HTMLButtonElement
   ).addEventListener("click", clearCanvas);
+
   (
     document.getElementById("removeDuplicateEdges") as HTMLButtonElement
   ).addEventListener("click", () => {
@@ -506,6 +628,11 @@ window.addEventListener("load", () => {
       doForceBalanceStep();
       recomputeElementsToDraw();
     }
+  });
+  (
+    document.getElementById("sideChainGenerationButton") as HTMLButtonElement
+  ).addEventListener("click", () => {
+    generateSideChains();
   });
   (
     document.getElementById("bifunctionalRemoval") as HTMLButtonElement
@@ -672,8 +799,12 @@ document.addEventListener("keydown", function (event) {
     selectAll();
   } else if (event.key === "c" || event.key == "Escape") {
     clearSelection();
+  } else if (event.key == "i") {
+    invertSelection();
   } else if (event.key === "d") {
     changeInteractionMode("delete_vertex");
+  } else if (event.key === "r") {
+    changeInteractionMode("random_walk");
   } else if (event.key === "l") {
     changeInteractionMode("delete_edge");
   } else if (event.key === "s") {

@@ -3,6 +3,16 @@ export interface Selectable {}
 class Selection {
   private selectedItems: Selectable[] = [];
 
+  toggleItems(items: Selectable[]): void {
+    items.forEach((item) => {
+      if (this.hasItem(item)) {
+        this.removeItem(item);
+      } else {
+        this.addItem(item);
+      }
+    });
+  }
+
   addItem(item: Selectable): void {
     this.selectedItems.push(item);
   }

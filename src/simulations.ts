@@ -1,4 +1,4 @@
-import { graph, Node } from "./graph";
+import { Edge, graph, Node } from "./graph";
 import { Point, Vector2d } from "./primitives";
 import { selection } from "./selection";
 import { GlobalSettings } from "./settings";
@@ -58,7 +58,9 @@ export function doForceBalanceStep(): void {
     let force: Vector2d = new Vector2d(0, 0);
     neighbours.forEach((neighbour) => {
       const distance = computeForceBetween(node, neighbour);
-      const correctedDistance = PBC(distance, boxHalf).multiply(1 / neighbours.length);
+      const correctedDistance = PBC(distance, boxHalf).multiply(
+        1 / neighbours.length
+      );
       force = force.add(correctedDistance);
     });
     console.log(`Node ${node.id} has force: ${force.toString()}`);
@@ -69,4 +71,103 @@ export function doForceBalanceStep(): void {
     node.coordinates.x = targetCoords.x;
     node.coordinates.y = targetCoords.y;
   });
+}
+
+export function doRandomWalk(startingPoint: Point): {
+  nodes: Node[];
+  edges: Edge[];
+} {
+  const boxSize = new Vector2d(
+    GlobalSettings.instance.canvasSize.x,
+    GlobalSettings.instance.canvasSize.y
+  );
+
+  const stepSize: number = (
+    document.getElementById("randomWalkStepSize") as HTMLInputElement
+  ).valueAsNumber;
+  const maxAngle: number = (
+    document.getElementById("randomWalkMaxAngle") as HTMLInputElement
+  ).valueAsNumber * Math.PI / 180;
+  const nSteps: number = (
+    document.getElementById("randomWalkSteps") as HTMLInputElement
+  ).valueAsNumber;
+  const resultingNodes: Node[] = [];
+  const resultingEdges: Edge[] = [];
+
+  // Get the vertex property from the UI
+  const vertexRadius = (
+    document.getElementById("vertexRadius") as HTMLInputElement
+  ).valueAsNumber;
+  const vertexStrokeWidth = (
+    document.getElementById("vertexStrokeWidth") as HTMLInputElement
+  ).valueAsNumber;
+  const vertexFill = (
+    document.getElementById("nodeFillColor") as HTMLInputElement
+  ).value;
+  const vertexStroke = (
+    document.getElementById("nodeColor") as HTMLInputElement
+  ).value;
+
+  // Create the first node at the starting point
+  const firstNode = new Node(
+    graph.getNextNodeId(),
+    startingPoint,
+    vertexRadius,
+    vertexStrokeWidth,
+    vertexFill,
+    vertexStroke
+  );
+  resultingNodes.push(firstNode);
+
+  // Initialize current position and direction
+  let currentPosition = new Point(startingPoint.x, startingPoint.y);
+  // Start with a random direction (0 to 2π)
+  let currentDirection = Math.random() * 2 * Math.PI;
+
+  // Get edge color and width from the UI
+  const edgeColor = (document.getElementById("edgeColor") as HTMLInputElement)
+    .value;
+  const edgeWeight = parseFloat(
+    (document.getElementById("lineWidth") as HTMLInputElement).value
+  );
+
+  // Perform the random walk
+  for (let i = 0; i < nSteps; i++) {
+    // Calculate a random angle within the maxAngle constraint
+    const angleChange = (Math.random() * 2 - 1) * maxAngle;
+    currentDirection += angleChange;
+
+    // Calculate the new position
+    const newX = currentPosition.x + stepSize * Math.cos(currentDirection);
+    const newY = currentPosition.y + stepSize * Math.sin(currentDirection);
+    currentPosition = new Point(newX, newY);
+
+    // Move into the box
+    currentPosition = moveIntoBox(currentPosition, boxSize);
+
+    // Create a new node at the new position
+    const newNode = new Node(
+      graph.getNextNodeId() + i + 1,
+      currentPosition,
+      vertexRadius,
+      vertexStrokeWidth,
+      vertexFill,
+      vertexStroke
+    );
+    resultingNodes.push(newNode);
+
+    // Create an edge between the previous node and the new node
+    const previousNode = resultingNodes[resultingNodes.length - 2];
+    const edge = new Edge(
+      previousNode.id,
+      newNode.id,
+      -1,
+      edgeWeight,
+      edgeColor
+    );
+    resultingEdges.push(edge);
+  }
+
+  // finally, return the resulting nodes and edges
+  return { nodes: resultingNodes, edges: resultingEdges };
 }

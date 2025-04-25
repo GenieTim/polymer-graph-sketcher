@@ -296,6 +296,12 @@ function generateSideChains() {
   const sideChainProbability = (
     document.getElementById("sideChainProb") as HTMLInputElement
   ).valueAsNumber;
+  const sideChainLengthRandomness = (
+    document.getElementById("sideChainLengthRandomness") as HTMLInputElement
+  ).valueAsNumber;
+  const sideChainAngleRandomness = (
+    document.getElementById("sideChainAngleRandomness") as HTMLInputElement
+  ).valueAsNumber;
 
   const selectedNodes = selection.getItemsOfClass(Node);
   // for each selected node, if it has two edges,
@@ -342,15 +348,25 @@ function generateSideChains() {
     const newNodes = [];
     const newNodeIds = [];
 
+    let firstDirection = Math.random() < 0.5;
+
     for (let i = 0; i < totalChains; i++) {
       // Randomly choose one of the two perpendicular directions
-      const useFirstDirection = Math.random() < 0.5;
-      const perpDirX = useFirstDirection ? perpDirX1 : perpDirX2;
-      const perpDirY = useFirstDirection ? perpDirY1 : perpDirY2;
+      firstDirection  = !firstDirection;
+      const perpDirX = firstDirection ? perpDirX1 : perpDirX2;
+      const perpDirY = firstDirection ? perpDirY1 : perpDirY2;
+
+      // Add a new random angle between -sideChainAngleRandomness and sideChainAngleRandomness
+      const angleVariation = Math.PI * sideChainAngleRandomness;
+      const randomAngle = (Math.random() * 2 - 1) * angleVariation;
+      const cosAngle = Math.cos(randomAngle);
+      const sinAngle = Math.sin(randomAngle);
+      const finalDirX = perpDirX * cosAngle - perpDirY * sinAngle;
+      const finalDirY = perpDirX * sinAngle + perpDirY * cosAngle;
 
       // Calculate the position of the new node
-      const newNodeX = node.coordinates.x + perpDirX * sideChainLength;
-      const newNodeY = node.coordinates.y + perpDirY * sideChainLength;
+      const newNodeX = node.coordinates.x + finalDirX * sideChainLength * (1 - sideChainLengthRandomness * Math.random());
+      const newNodeY = node.coordinates.y + finalDirY * sideChainLength * (1 - sideChainLengthRandomness * Math.random());
 
       // Create the new node
       const newNodeId = nNodesTotal++;

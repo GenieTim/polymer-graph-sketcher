@@ -105,6 +105,12 @@ canvas.addEventListener("click", function (event) {
         actionManager.addAction(new SelectNodesAction(newSelectedNodes));
       }
     }
+  } else if (interactionMode === "select_chains") {
+    const mainNode = graph.findNodeByCoordinates(x, y);
+    if (mainNode !== null) {
+      const newSelectedNodes = graph.deepConnectedTo(mainNode);
+      actionManager.addAction(new SelectNodesAction(newSelectedNodes, true));
+    }
   } else if (interactionMode === "random_walk") {
     const walk = doRandomWalk(new Point(x, y));
     actionManager.addAction(new AddNodesAction(walk.nodes));
@@ -352,7 +358,7 @@ function generateSideChains() {
 
     for (let i = 0; i < totalChains; i++) {
       // Randomly choose one of the two perpendicular directions
-      firstDirection  = !firstDirection;
+      firstDirection = !firstDirection;
       const perpDirX = firstDirection ? perpDirX1 : perpDirX2;
       const perpDirY = firstDirection ? perpDirY1 : perpDirY2;
 
@@ -365,8 +371,16 @@ function generateSideChains() {
       const finalDirY = perpDirX * sinAngle + perpDirY * cosAngle;
 
       // Calculate the position of the new node
-      const newNodeX = node.coordinates.x + finalDirX * sideChainLength * (1 - sideChainLengthRandomness * Math.random());
-      const newNodeY = node.coordinates.y + finalDirY * sideChainLength * (1 - sideChainLengthRandomness * Math.random());
+      const newNodeX =
+        node.coordinates.x +
+        finalDirX *
+          sideChainLength *
+          (1 - sideChainLengthRandomness * Math.random());
+      const newNodeY =
+        node.coordinates.y +
+        finalDirY *
+          sideChainLength *
+          (1 - sideChainLengthRandomness * Math.random());
 
       // Create the new node
       const newNodeId = nNodesTotal++;
@@ -549,9 +563,8 @@ window.addEventListener("load", () => {
             settings.canvasSize.x = width;
             resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
             recomputeElementsToDraw();
-            document.getElementById(
-              "canvas-size"
-            )!.textContent = `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+            document.getElementById("canvas-size")!.textContent =
+              `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
           }
 
           do(): void {
@@ -578,9 +591,8 @@ window.addEventListener("load", () => {
           settings.canvasSize.y = height;
           resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
           recomputeElementsToDraw();
-          document.getElementById(
-            "canvas-size"
-          )!.textContent = `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
+          document.getElementById("canvas-size")!.textContent =
+            `Canvas size: ${settings.canvasSize.x}x${settings.canvasSize.y}`;
         }
 
         do(): void {
@@ -825,6 +837,8 @@ document.addEventListener("keydown", function (event) {
     changeInteractionMode("delete_edge");
   } else if (event.key === "s") {
     changeInteractionMode("select");
+  } else if (event.key === "h") {
+    changeInteractionMode("select_chains");
   } else if (event.key === "v") {
     changeInteractionMode("vertex");
   } else if (event.key === "e") {

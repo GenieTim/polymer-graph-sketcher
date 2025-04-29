@@ -21,7 +21,7 @@ import { GlobalSettings } from "./settings";
 import { selection } from "./selection";
 import "./style.css";
 import { SVGCanvasRenderingContext2D } from "./svg-ctx";
-import { doForceBalanceStep, doRandomWalk } from "./simulations";
+import { doForceBalanceStep, doPositionEquilibrationStep, doRandomWalk } from "./simulations";
 import { collapseEdgesByColor, removeTwofunctionalNodes } from "./topology";
 import { Colour } from "./Colours";
 
@@ -654,6 +654,18 @@ window.addEventListener("load", () => {
     for (let i = 0; i < nSteps; i++) {
       console.log("Running force balance step " + i + " of " + nSteps);
       doForceBalanceStep();
+      recomputeElementsToDraw();
+    }
+  });
+  (
+    document.getElementById("positionEquilibrationStep") as HTMLButtonElement
+  ).addEventListener("click", () => {
+    const nSteps = (
+      document.getElementById("nPositionEquilibrationSteps") as HTMLInputElement
+    ).valueAsNumber;
+    for (let i = 0; i < nSteps; i++) {
+      console.log("Running position equilibration step " + i + " of " + nSteps);
+      doPositionEquilibrationStep();
       recomputeElementsToDraw();
     }
   });

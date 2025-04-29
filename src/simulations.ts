@@ -85,9 +85,11 @@ export function doRandomWalk(startingPoint: Point): {
   const stepSize: number = (
     document.getElementById("randomWalkStepSize") as HTMLInputElement
   ).valueAsNumber;
-  const maxAngle: number = (
-    document.getElementById("randomWalkMaxAngle") as HTMLInputElement
-  ).valueAsNumber * Math.PI / 180;
+  const maxAngle: number =
+    ((document.getElementById("randomWalkMaxAngle") as HTMLInputElement)
+      .valueAsNumber *
+      Math.PI) /
+    180;
   const nSteps: number = (
     document.getElementById("randomWalkSteps") as HTMLInputElement
   ).valueAsNumber;
@@ -170,4 +172,78 @@ export function doRandomWalk(startingPoint: Point): {
 
   // finally, return the resulting nodes and edges
   return { nodes: resultingNodes, edges: resultingEdges };
+}
+
+/**
+ * Move each node in the graph such that the nodes are a bit more evenly distributed.
+ * Helps to move nodes away from each other.
+ * Each step of each node is at most the radius of that node.
+ */
+export function doPositionEquilibrationStep(): void {
+  const nodes = selection.getItemsOfClass(Node);
+  console.log("Equilibrating " + nodes.length + " nodes...");
+
+  if (nodes.length < 1) return; // No need to equilibrate if there's only one or zero nodes
+
+  const boxSize = new Vector2d(
+    GlobalSettings.instance.canvasSize.x,
+    GlobalSettings.instance.canvasSize.y
+  );
+  const boxHalf = boxSize.multiply(0.5);
+
+  // Repulsion factor - can be adjusted as needed
+  const repulsionStrength = 25.0;
+
+  // Calculate forces for each node
+  for (const node of nodes) {
+    let totalForce = new Vector2d(0, 0);
+
+    // Calculate repulsive forces from all other nodes
+    for (const otherNode of graph.getAllNodes()) {
+      if (node.id === otherNode.id) continue;
+
+      const pos1 = new Vector2d(node.coordinates.x, node.coordinates.y);
+      const pos2 = new Vector2d(
+        otherNode.coordinates.x,
+        otherNode.coordinates.y
+      );
+      let distance = pos2.subtract(pos1);
+
+      // Apply periodic boundary conditions
+      distance = PBC(distance, boxHalf);
+
+      // Calculate distance magnitude
+      const distanceMagnitude = Math.sqrt(
+        distance.x * distance.x + distance.y * distance.y
+      );
+
+      if (distanceMagnitude > 0) {
+        // Repulsive force inversely proportional to distance
+        const forceMagnitude =
+          repulsionStrength / (distanceMagnitude * distanceMagnitude);
+
+        // Normalize the distance vector and scale by force magnitude
+        const forceVector = distance.multiply(-forceMagnitude);
+        totalForce = totalForce.add(forceVector);
+      }
+    }
+
+    console.log(`Node ${node.id} experiences force: ${totalForce.toString()} and has radius ${node.radius}...`);
+
+    // Limit the maximum step size to the node's radius
+    if (totalForce.x > node.radius) totalForce.x = node.radius;
+    if (totalForce.x < -node.radius) totalForce.x = -node.radius;
+    if (totalForce.y > node.radius) totalForce.y = node.radius;
+    if (totalForce.y < -node.radius) totalForce.y = -node.radius;
+
+    // Update node position
+    const newPos = new Vector2d(
+      node.coordinates.x + totalForce.x,
+      node.coordinates.y + totalForce.y
+    );
+
+    // Ensure the node stays within the box
+    // const boundedPos = moveIntoBox(newPos, boxSize);
+    node.coordinates = newPos;
+  }
 }

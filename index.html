@@ -263,6 +263,16 @@
           </div>
           <div class="row mt-1">
             <div class="col">
+              <input type="number" id="nPositionEquilibrationSteps" min="1" max="100" step="1" value="1" />
+              <button id="positionEquilibrationStep" type="button" class="btn btn-secondary">Position equilibration step</button>
+            </div>
+            <div class="col">
+              <button id="bifunctionalRemoval" type="button" class="btn btn-secondary">Remove bifunctional
+                nodes</button>
+            </div>
+          </div>
+          <div class="row mt-1">
+            <div class="col">
               <label for="mergeConnectionColor">Merge connection by edge color:</label>
               <input type="color" id="mergeConnectionColor" class="form-control form-control-color" value="#000000">
             </div>

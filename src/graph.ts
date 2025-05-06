@@ -116,6 +116,10 @@ class Graph {
     return Object.keys(this.nodes).length;
   }
 
+  getNrOfEdges() {
+    return this.edges.length;
+  }
+
   getAllNodeIds(): number[] {
     return Object.values(this.nodes).map((node) => node.id);
   }
@@ -140,29 +144,29 @@ class Graph {
   /**
    * Follow all edges that start from the given node, and return all connected nodes.
    * Continue until no more unvisited edges are found.
-   * 
+   *
    * @param mainNode the node to find connected nodes from
    */
   deepConnectedTo(mainNode: Node) {
     const visited = new Set<number>();
     const result: Node[] = [];
     const queue: number[] = [mainNode.id];
-    
+
     while (queue.length > 0) {
       const currentId = queue.shift()!;
-      
+
       if (visited.has(currentId)) continue;
-      
+
       visited.add(currentId);
       result.push(this.getNode(currentId));
-      
+
       const connectedNodes = this.getEdgesInvolvingNode(currentId)
-        .map(edge => edge.getOtherNodeId(currentId))
-        .filter(id => !visited.has(id));
-      
+        .map((edge) => edge.getOtherNodeId(currentId))
+        .filter((id) => !visited.has(id));
+
       queue.push(...connectedNodes);
     }
-    
+
     return result;
   }
 

@@ -286,6 +286,9 @@ function recomputeElementsToDraw(scaling = { x: 1, y: 1 }) {
 
   // redraw the graph
   draw();
+
+  // update graph statistics
+  document.getElementById("graph-stats")!.textContent = `Nodes: ${graph.getNrOfNodes()}, Edges: ${graph.getNrOfEdges()}`;
 }
 
 function setValueById(id: string, value: string | number) {

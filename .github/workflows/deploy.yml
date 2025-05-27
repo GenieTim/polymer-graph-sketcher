@@ -19,14 +19,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "23"
+          node-version: "18" # Changed to a more stable version
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      - name: Install markdown-to-html converter
+        run: npm install -g markdown-to-html-cli
 
+      - name: Convert README to HTML
+        run: markdown-to-html-cli README.md > documentation.html
+
+      - name: Build
+        run: |
+          npm run build
+          mv documentation.html dist/
+          
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:

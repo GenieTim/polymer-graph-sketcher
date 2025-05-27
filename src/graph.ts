@@ -209,7 +209,7 @@ class Graph {
     this.nodes = {};
     this.edges = [];
 
-    for (const [key, node] of Object.entries(json.nodes)) {
+    for (const [, node] of Object.entries(json.nodes)) {
       this.setNode(
         new Node(
           (node as any).id,
@@ -322,7 +322,7 @@ class Graph {
    */
   findNodesByCoordinates(x: number, y: number): Node[] {
     let results: Node[] = [];
-    for (const [key, node] of Object.entries(this.nodes)) {
+    for (const [, node] of Object.entries(this.nodes)) {
       const distance = Math.sqrt(
         Math.pow(node.coordinates.x - x, 2) +
           Math.pow(node.coordinates.y - y, 2)

@@ -28,7 +28,7 @@ export class Colour {
     r: number,
     g: number,
     b: number,
-    a: number
+    _a: number
   ): [number, number, number] {
     const [x, y, z] = Colour.rgb2xyz(r, g, b);
     return Colour.xyz2lab(x, y, z);

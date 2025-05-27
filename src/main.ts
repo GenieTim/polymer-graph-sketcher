@@ -154,7 +154,7 @@ window.addEventListener("mousemove", function (event) {
   }
 });
 
-window.addEventListener("mouseup", function (event) {
+window.addEventListener("mouseup", function (_event) {
   dragStart = null;
 });
 

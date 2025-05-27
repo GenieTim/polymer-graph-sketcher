@@ -86,8 +86,8 @@ export class SVGCanvasRenderingContext2D implements CanvasRenderingContext2D {
     x: number,
     y: number,
     radius: number,
-    startAngle: number,
-    endAngle: number
+    _startAngle: number,
+    _endAngle: number
   ): void {
     const circle = document.createElementNS(
       "http://www.w3.org/2000/svg",
@@ -285,128 +285,128 @@ export class SVGCanvasRenderingContext2D implements CanvasRenderingContext2D {
   globalAlpha: number = 1;
   globalCompositeOperation!: GlobalCompositeOperation;
   drawImage(
-    image: unknown,
-    sx: unknown,
-    sy: unknown,
-    sw?: unknown,
-    sh?: unknown,
-    dx?: unknown,
-    dy?: unknown,
-    dw?: unknown,
-    dh?: unknown
+    _image: unknown,
+    _sx: unknown,
+    _sy: unknown,
+    _sw?: unknown,
+    _sh?: unknown,
+    _dx?: unknown,
+    _dy?: unknown,
+    _dw?: unknown,
+    _dh?: unknown
   ): void {
     throw new Error("Method not implemented.");
   }
-  clip(path?: unknown, fillRule?: unknown): void {
+  clip(_path?: unknown, _fillRule?: unknown): void {
     throw new Error("Method not implemented.");
   }
   isPointInPath(
-    path: unknown,
-    x: unknown,
-    y?: unknown,
-    fillRule?: unknown
+    _path: unknown,
+    _x: unknown,
+    _y?: unknown,
+    _fillRule?: unknown
   ): boolean {
     throw new Error("Method not implemented.");
   }
-  isPointInStroke(path: unknown, x: unknown, y?: unknown): boolean {
+  isPointInStroke(_path: unknown, _x: unknown, _y?: unknown): boolean {
     throw new Error("Method not implemented.");
   }
   fillStyle!: string | CanvasGradient | CanvasPattern;
   strokeStyle!: string | CanvasGradient | CanvasPattern;
   createConicGradient(
-    startAngle: number,
-    x: number,
-    y: number
+    _startAngle: number,
+    _x: number,
+    _y: number
   ): CanvasGradient {
     throw new Error("Method not implemented.");
   }
   createLinearGradient(
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number
+    _x0: number,
+    _y0: number,
+    _x1: number,
+    _y1: number
   ): CanvasGradient {
     throw new Error("Method not implemented.");
   }
   createPattern(
-    image: CanvasImageSource,
-    repetition: string | null
+    _image: CanvasImageSource,
+    _repetition: string | null
   ): CanvasPattern | null {
     throw new Error("Method not implemented.");
   }
   createRadialGradient(
-    x0: number,
-    y0: number,
-    r0: number,
-    x1: number,
-    y1: number,
-    r1: number
+    _x0: number,
+    _y0: number,
+    _r0: number,
+    _x1: number,
+    _y1: number,
+    _r1: number
   ): CanvasGradient {
     throw new Error("Method not implemented.");
   }
   filter!: string;
-  createImageData(sw: unknown, sh?: unknown, settings?: unknown): ImageData {
+  createImageData(_sw: unknown, _sh?: unknown, _settings?: unknown): ImageData {
     throw new Error("Method not implemented.");
   }
   getImageData(
-    sx: number,
-    sy: number,
-    sw: number,
-    sh: number,
-    settings?: ImageDataSettings
+    _sx: number,
+    _sy: number,
+    _sw: number,
+    _sh: number,
+    _settings?: ImageDataSettings
   ): ImageData {
     throw new Error("Method not implemented.");
   }
   putImageData(
-    imagedata: unknown,
-    dx: unknown,
-    dy: unknown,
-    dirtyX?: unknown,
-    dirtyY?: unknown,
-    dirtyWidth?: unknown,
-    dirtyHeight?: unknown
+    _imagedata: unknown,
+    _dx: unknown,
+    _dy: unknown,
+    _dirtyX?: unknown,
+    _dirtyY?: unknown,
+    _dirtyWidth?: unknown,
+    _dirtyHeight?: unknown
   ): void {
     throw new Error("Method not implemented.");
   }
   imageSmoothingEnabled!: boolean;
   imageSmoothingQuality!: ImageSmoothingQuality;
-  arcTo(x1: number, y1: number, x2: number, y2: number, radius: number): void {
+  arcTo(_x1: number, _y1: number, _x2: number, _y2: number, _radius: number): void {
     throw new Error("Method not implemented.");
   }
-  scale(x: number, y: number): void {
+  scale(_x: number, _y: number): void {
     throw new Error("Method not implemented.");
   }
   bezierCurveTo(
-    cp1x: number,
-    cp1y: number,
-    cp2x: number,
-    cp2y: number,
-    x: number,
-    y: number
+    _cp1x: number,
+    _cp1y: number,
+    _cp2x: number,
+    _cp2y: number,
+    _x: number,
+    _y: number
   ): void {
     throw new Error("Method not implemented.");
   }
   ellipse(
-    x: number,
-    y: number,
-    radiusX: number,
-    radiusY: number,
-    rotation: number,
-    startAngle: number,
-    endAngle: number,
-    counterclockwise?: boolean
+    _x: number,
+    _y: number,
+    _radiusX: number,
+    _radiusY: number,
+    _rotation: number,
+    _startAngle: number,
+    _endAngle: number,
+    _counterclockwise?: boolean
   ): void {
     throw new Error("Method not implemented.");
   }
-  quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void {
+  quadraticCurveTo(_cpx: number, _cpy: number, _x: number, _y: number): void {
     throw new Error("Method not implemented.");
   }
   roundRect(
-    x: unknown,
-    y: unknown,
-    w: unknown,
-    h: unknown,
-    radii?: unknown
+    _x: unknown,
+    _y: unknown,
+    _w: unknown,
+    _h: unknown,
+    _radii?: unknown
   ): void {
     throw new Error("Method not implemented.");
   }
@@ -418,7 +418,7 @@ export class SVGCanvasRenderingContext2D implements CanvasRenderingContext2D {
   getLineDash(): number[] {
     throw new Error("Method not implemented.");
   }
-  setLineDash(segments: unknown): void {
+  setLineDash(_segments: unknown): void {
     throw new Error("Method not implemented.");
   }
   shadowBlur!: number;
@@ -431,13 +431,13 @@ export class SVGCanvasRenderingContext2D implements CanvasRenderingContext2D {
   reset(): void {
     throw new Error("Method not implemented.");
   }
-  fillText(text: string, x: number, y: number, maxWidth?: number): void {
+  fillText(_text: string, _x: number, _y: number, _maxWidth?: number): void {
     throw new Error("Method not implemented.");
   }
-  measureText(text: string): TextMetrics {
+  measureText(_text: string): TextMetrics {
     throw new Error("Method not implemented.");
   }
-  strokeText(text: string, x: number, y: number, maxWidth?: number): void {
+  strokeText(_text: string, _x: number, _y: number, _maxWidth?: number): void {
     throw new Error("Method not implemented.");
   }
   direction: CanvasDirection = "ltr";
@@ -457,26 +457,26 @@ export class SVGCanvasRenderingContext2D implements CanvasRenderingContext2D {
     throw new Error("Method not implemented.");
   }
   setTransform(
-    a?: unknown,
-    b?: unknown,
-    c?: unknown,
-    d?: unknown,
-    e?: unknown,
-    f?: unknown
+    _a?: unknown,
+    _b?: unknown,
+    _c?: unknown,
+    _d?: unknown,
+    _e?: unknown,
+    _f?: unknown
   ): void {
     throw new Error("Method not implemented.");
   }
   transform(
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number
+    _a: number,
+    _b: number,
+    _c: number,
+    _d: number,
+    _e: number,
+    _f: number
   ): void {
     throw new Error("Method not implemented.");
   }
-  drawFocusIfNeeded(path: unknown, element?: unknown): void {
+  drawFocusIfNeeded(_path: unknown, _element?: unknown): void {
     throw new Error("Method not implemented.");
   }
 }

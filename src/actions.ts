@@ -115,7 +115,7 @@ export class NodePropertyUpdateAction<K extends keyof Node> implements Action {
    * to the target value for all affected nodes.
    */
   do() {
-    this.affectedNodes.forEach((node, index) => {
+    this.affectedNodes.forEach((node) => {
       node[this.property] = this.targetValue;
     });
   }

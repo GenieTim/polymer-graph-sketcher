@@ -1,6 +1,7 @@
 # Polymer Graph Sketcher
 
-Create 2D sketches of Polymers: sketch bead-spring models.
+Create 2D sketches of Polymers: 
+With this software, you can sketch bead-spring networks in 2D.
 
 Example:
 ![Illustration of a bead-spring model created with this software](./examples/graph-example-1.svg)

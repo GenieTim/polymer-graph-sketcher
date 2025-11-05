@@ -46,8 +46,8 @@ function computeForceBetween(node1: Node, node2: Node): Vector2d {
 
 export function doForceBalanceStep(): void {
   const boxSize = new Vector2d(
-    GlobalSettings.instance.canvasSize.y,
-    GlobalSettings.instance.canvasSize.x
+    GlobalSettings.instance.canvasSize.x,
+    GlobalSettings.instance.canvasSize.y
   );
   const boxHalf = boxSize.multiply(0.5);
   console.log("Box size: " + boxSize.toString(), [boxHalf, boxSize]);

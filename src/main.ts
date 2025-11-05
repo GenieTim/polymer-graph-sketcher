@@ -14,7 +14,7 @@ import {
   SelectNodesAction,
   UnselectNodesAction,
 } from "./actions";
-import { Circle, Drawable, Rectangle } from "./drawables";
+import { Circle, Drawable, Rectangle, PartialLine } from "./drawables";
 import { graph, Node } from "./graph";
 import { Point } from "./primitives";
 import { GlobalSettings } from "./settings";
@@ -24,6 +24,7 @@ import { SVGCanvasRenderingContext2D } from "./svg-ctx";
 import { doForceBalanceStep, doPositionEquilibrationStep, doRandomWalk } from "./simulations";
 import { collapseEdgesByColor, removeTwofunctionalNodes } from "./topology";
 import { Colour } from "./Colours";
+import { MovieMaker, MoviePresets } from "./movie-maker";
 
 var canvas: HTMLCanvasElement = document.getElementById(
   "canvas"
@@ -45,11 +46,30 @@ var actionManager: ActionManager = new ActionManager(() =>
   recomputeElementsToDraw()
 );
 
+// Movie recording
+var movieMaker: MovieMaker | null = null;
+var recordingEdges: Array<{ 
+  type: 'add' | 'remove';
+  fromNode: Node; 
+  toNode: Node; 
+  color: string; 
+  weight: number;
+}> = [];
+var isRecordingEdges: boolean = false;
+var animationPartialEdges: any[] = [];
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   elementsToDraw.forEach(function (element) {
     element.draw(ctx);
+  });
+
+  // Draw animation partial edges on top
+  animationPartialEdges.forEach(function (edge) {
+    if (edge) {
+      edge.draw(ctx);
+    }
   });
 
   // requestAnimationFrame(draw);
@@ -70,6 +90,25 @@ canvas.addEventListener("click", function (event) {
     var newSelectedNode = graph.findNodeByCoordinates(x, y);
     if (newSelectedNode !== null) {
       if (!selection.empty) {
+        // Record edges if recording is active
+        if (isRecordingEdges) {
+          const edgeColor = (document.getElementById("edgeColor") as HTMLInputElement).value;
+          const edgeWeight = parseFloat(
+            (document.getElementById("lineWidth") as HTMLInputElement).value
+          );
+          
+          selection.getItemsOfClass(Node).forEach((selectedNode) => {
+            recordingEdges.push({
+              type: 'add',
+              fromNode: selectedNode,
+              toNode: newSelectedNode!,
+              color: edgeColor,
+              weight: edgeWeight,
+            });
+          });
+          updateMovieRecordingUI();
+        }
+        
         actionManager.addAction(
           new AddEdgeAction(newSelectedNode, selection.getItemsOfClass(Node))
         );
@@ -88,6 +127,26 @@ canvas.addEventListener("click", function (event) {
       (newSelectedNode !== null && !selection.empty) ||
       selection.length > 1
     ) {
+      // Record edge deletions if recording is active
+      if (isRecordingEdges && newSelectedNode !== null && !selection.empty) {
+        const edgesToDelete = graph.getEdgesInvolvingNodes(
+          [...selection.getItemsOfClass(Node).map(n => n.id), newSelectedNode.id]
+        );
+        
+        edgesToDelete.forEach(edge => {
+          const fromNode = graph.getNode(edge.fromId);
+          const toNode = graph.getNode(edge.toId);
+          recordingEdges.push({
+            type: 'remove',
+            fromNode: fromNode,
+            toNode: toNode,
+            color: edge.color,
+            weight: edge.weight,
+          });
+        });
+        updateMovieRecordingUI();
+      }
+      
       actionManager.addAction(
         new DeleteEdgesAction(selection.getItemsOfClass(Node), newSelectedNode)
       );
@@ -408,6 +467,323 @@ function generateSideChains() {
   });
 }
 
+// ========================================
+// Movie Recording Functions
+// ========================================
+
+/**
+ * Initialize the movie maker
+ */
+function initializeMovieMaker() {
+  movieMaker = new MovieMaker({
+    canvas: canvas,
+    recorderOptions: {
+      fps: 60,
+      videoBitsPerSecond: 5000000, // 5 Mbps for good quality
+    },
+    animatorOptions: {
+      targetFPS: 60,
+    },
+  });
+}
+
+/**
+ * Start recording edge additions for animation
+ */
+function startRecordingEdges() {
+  if (isRecordingEdges) {
+    alert('Already recording edges!');
+    return;
+  }
+  
+  isRecordingEdges = true;
+  recordingEdges = [];
+  updateMovieRecordingUI();
+  console.log('Started recording edge additions');
+}
+
+/**
+ * Stop recording edges and create animation
+ */
+function stopRecordingEdges() {
+  if (!isRecordingEdges) {
+    alert('Not currently recording edges!');
+    return;
+  }
+  
+  if (recordingEdges.length === 0) {
+    alert('No edges were recorded!');
+    isRecordingEdges = false;
+    updateMovieRecordingUI();
+    return;
+  }
+
+  isRecordingEdges = false;
+  updateMovieRecordingUI();
+  console.log(`Stopped recording. ${recordingEdges.length} edges recorded.`);
+}
+
+/**
+ * Create and download movie of recorded edge additions
+ */
+async function createEdgeAdditionMovie() {
+  if (recordingEdges.length === 0) {
+    alert('No edges recorded! Use "Start Recording Edges" first.');
+    return;
+  }
+
+  if (!movieMaker) {
+    initializeMovieMaker();
+  }
+
+  const edgeDuration = (
+    document.getElementById("edgeAnimationDuration") as HTMLInputElement
+  ).valueAsNumber;
+  const interpolationSteps = 30;
+
+  // Clear any previous animation edges
+  animationPartialEdges = [];
+
+  // Calculate the initial state by tracking net changes for each edge
+  // Key: "fromId-toId" (normalized so smaller ID is always first)
+  const edgeNetChanges = new Map<string, {
+    lastAction: 'add' | 'remove';
+    fromNode: any;
+    toNode: any;
+    color: string;
+    weight: number;
+  }>();
+
+  // Process recording to determine last action for each unique edge
+  recordingEdges.forEach(({ type, fromNode, toNode, color, weight }) => {
+    const key = fromNode.id < toNode.id 
+      ? `${fromNode.id}-${toNode.id}` 
+      : `${toNode.id}-${fromNode.id}`;
+    
+    edgeNetChanges.set(key, {
+      lastAction: type,
+      fromNode,
+      toNode,
+      color,
+      weight
+    });
+  });
+
+  // Restore to initial state by undoing the net effect of all recorded actions
+  edgeNetChanges.forEach((netChange, _key) => {
+    const edges = graph.getEdgesInvolvingNodes([netChange.fromNode.id, netChange.toNode.id]);
+    const matchingEdge = edges.find(edge => 
+      (edge.fromId === netChange.fromNode.id && edge.toId === netChange.toNode.id) ||
+      (edge.fromId === netChange.toNode.id && edge.toId === netChange.fromNode.id)
+    );
+    
+    if (netChange.lastAction === 'add') {
+      // Net effect was addition, so remove it to get initial state
+      if (matchingEdge) {
+        graph.deleteEdge(matchingEdge);
+      }
+    } else {
+      // Net effect was removal, so add it back to get initial state
+      if (!matchingEdge) {
+        graph.addEdge(netChange.fromNode.id, netChange.toNode.id, netChange.color, netChange.weight);
+      }
+    }
+  });
+  
+  // Redraw to show the initial state
+  recomputeElementsToDraw();
+
+  // Create animation frames
+  const frames: any[] = [];
+
+  recordingEdges.forEach(({ type, fromNode, toNode, color, weight }, edgeIndex) => {
+    const stepDuration = edgeDuration / interpolationSteps;
+    
+    // Create a PartialLine for this edge
+    const partialLine = new PartialLine(
+      { x: fromNode.coordinates.x, y: fromNode.coordinates.y },
+      { x: toNode.coordinates.x, y: toNode.coordinates.y },
+      type === 'add' ? 0 : 1, // Start from 0 for additions, 1 for removals
+      true,
+      color,
+      weight,
+      graph.zigzagSpacing,
+      graph.zigzagLength,
+      graph.zigzagEndLengths
+    );
+
+    // Progressive edge drawing or removal
+    for (let i = 0; i <= interpolationSteps; i++) {
+      const progress = i / interpolationSteps;
+
+      frames.push({
+        action: () => {
+          if (type === 'add') {
+            // Adding edge: progress from 0 to 1
+            if (i === 0) {
+              animationPartialEdges[edgeIndex] = partialLine;
+            } else if (i < interpolationSteps) {
+              partialLine.setProgress(progress);
+            } else {
+              animationPartialEdges[edgeIndex] = null;
+              graph.addEdge(fromNode.id, toNode.id, color, weight);
+            }
+          } else {
+            // Removing edge: progress from 1 to 0
+            if (i === 0) {
+              // First, find and remove the actual edge
+              const edges = graph.getEdgesInvolvingNodes([fromNode.id, toNode.id]);
+              const edgeToRemove = edges.find(edge => 
+                (edge.fromId === fromNode.id && edge.toId === toNode.id) ||
+                (edge.fromId === toNode.id && edge.toId === fromNode.id)
+              );
+              if (edgeToRemove) {
+                graph.deleteEdge(edgeToRemove);
+              }
+              // Start showing the partial edge
+              animationPartialEdges[edgeIndex] = partialLine;
+            } else if (i < interpolationSteps) {
+              partialLine.setProgress(1 - progress);
+            } else {
+              animationPartialEdges[edgeIndex] = null;
+            }
+          }
+          recomputeElementsToDraw();
+        },
+        duration: stepDuration,
+      });
+    }
+  });
+
+  const sequence = {
+    name: 'Edge Animation',
+    frames,
+    defaultFrameDuration: edgeDuration / interpolationSteps,
+    onComplete: () => {
+      animationPartialEdges = [];
+    },
+  };
+
+  // Record the movie
+  try {
+    const addCount = recordingEdges.filter(e => e.type === 'add').length;
+    const removeCount = recordingEdges.filter(e => e.type === 'remove').length;
+    const statusMsg = `Recording edge animation (${addCount} additions, ${removeCount} removals)...`;
+    updateMovieStatus(statusMsg);
+    
+    await movieMaker!.recordMovie([sequence], 'edge-animation.webm');
+    updateMovieStatus('Movie saved successfully!');
+    setTimeout(() => updateMovieStatus(''), 3000);
+  } catch (error) {
+    console.error('Error creating movie:', error);
+    alert('Error creating movie: ' + error);
+    updateMovieStatus('Error creating movie');
+  }
+}
+
+/**
+ * Create and download movie of simulation steps
+ */
+async function createSimulationMovie() {
+  if (!movieMaker) {
+    initializeMovieMaker();
+  }
+
+  const simulationType = (
+    document.getElementById("simulationType") as HTMLSelectElement
+  ).value;
+  const stepCount = (
+    document.getElementById("simulationStepCount") as HTMLInputElement
+  ).valueAsNumber;
+  const stepDuration = (
+    document.getElementById("simulationStepDuration") as HTMLInputElement
+  ).valueAsNumber;
+
+  // Determine which simulation function to use
+  let simulationStep: () => void;
+  let simulationName: string;
+
+  if (simulationType === 'force_balance') {
+    simulationStep = doForceBalanceStep;
+    simulationName = 'Force Balance';
+  } else if (simulationType === 'position_equilibration') {
+    simulationStep = doPositionEquilibrationStep;
+    simulationName = 'Position Equilibration';
+  } else {
+    alert('Invalid simulation type');
+    return;
+  }
+
+  // Create animation sequence
+  const sequence = MoviePresets.createSimulationAnimation(
+    simulationStep,
+    () => recomputeElementsToDraw(),
+    {
+      stepCount: stepCount,
+      stepDuration: stepDuration,
+    }
+  );
+
+  // Record the movie
+  try {
+    updateMovieStatus(`Recording ${simulationName} simulation movie...`);
+    await movieMaker!.recordMovie(
+      [sequence],
+      `${simulationType}-simulation.webm`
+    );
+    updateMovieStatus('Movie saved successfully!');
+    setTimeout(() => updateMovieStatus(''), 3000);
+  } catch (error) {
+    console.error('Error creating movie:', error);
+    alert('Error creating movie: ' + error);
+    updateMovieStatus('Error creating movie');
+  }
+}
+
+
+
+/**
+ * Update movie recording UI state
+ */
+function updateMovieRecordingUI() {
+  const recordBtn = document.getElementById('startRecordingEdgesBtn') as HTMLButtonElement;
+  const stopBtn = document.getElementById('stopRecordingEdgesBtn') as HTMLButtonElement;
+  const indicator = document.getElementById('recordingIndicator');
+  
+  if (isRecordingEdges) {
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+    if (indicator) {
+      indicator.textContent = `Recording... (${recordingEdges.length} edges)`;
+      indicator.style.color = 'red';
+    }
+  } else {
+    recordBtn.disabled = false;
+    stopBtn.disabled = true;
+    if (indicator) {
+      indicator.textContent = recordingEdges.length > 0 
+        ? `Ready (${recordingEdges.length} edges recorded)` 
+        : 'Not recording';
+      indicator.style.color = recordingEdges.length > 0 ? 'green' : 'black';
+    }
+  }
+}
+
+/**
+ * Update movie status message
+ */
+function updateMovieStatus(message: string) {
+  const statusElement = document.getElementById('movieStatus');
+  if (statusElement) {
+    statusElement.textContent = message;
+    if (message) {
+      statusElement.style.display = 'block';
+    } else {
+      statusElement.style.display = 'none';
+    }
+  }
+}
+
 window.addEventListener("load", () => {
   canvasParent.style.width = settings.canvasSize.x + "px";
   canvasParent.style.height = settings.canvasSize.y + "px";
@@ -708,6 +1084,33 @@ window.addEventListener("load", () => {
       });
     }
   });
+
+  // Initialize movie maker
+  initializeMovieMaker();
+
+  // Movie recording event listeners
+  const startRecordingBtn = document.getElementById('startRecordingEdgesBtn');
+  if (startRecordingBtn) {
+    startRecordingBtn.addEventListener('click', startRecordingEdges);
+  }
+
+  const stopRecordingBtn = document.getElementById('stopRecordingEdgesBtn');
+  if (stopRecordingBtn) {
+    stopRecordingBtn.addEventListener('click', stopRecordingEdges);
+  }
+
+  const createEdgeMovieBtn = document.getElementById('createEdgeMovieBtn');
+  if (createEdgeMovieBtn) {
+    createEdgeMovieBtn.addEventListener('click', createEdgeAdditionMovie);
+  }
+
+  const createSimMovieBtn = document.getElementById('createSimMovieBtn');
+  if (createSimMovieBtn) {
+    createSimMovieBtn.addEventListener('click', createSimulationMovie);
+  }
+
+  // Initialize UI state
+  updateMovieRecordingUI();
 });
 
 function changeInteractionMode(mode: string) {

@@ -22,6 +22,8 @@ Example:
       - [Side Chain Generator](#side-chain-generator)
     - [Tools](#tools)
     - [Export Options](#export-options)
+    - [Movie Recording](#movie-recording)
+      - [How to Use](#how-to-use)
   - [Keyboard Shortcuts](#keyboard-shortcuts)
     - [General Actions](#general-actions)
     - [Interaction Modes](#interaction-modes)
@@ -117,6 +119,25 @@ These settings affect both new as well as currently selected nodes/vertices.
 These tools and settings allow for the creation of complex polymer graphs, from simple linear chains to branched structures with side chains. The various export options ensure that your work can be saved and used in different formats as needed.
 
 The import of the JSON file is offered at the bottom of the tools.
+
+### Movie Recording
+
+Create animated movies of your graph construction and simulation processes.
+
+The Movie Recording feature allows you to:
+
+1. **Record Edge Additions**: Capture edges as you add them, then generate smooth animations showing the graph being built
+2. **Animate Simulations**: Record force balance or position equilibration steps at a controlled speed
+3. **Create Combined Movies**: Combine multiple animation types into a single video
+
+#### How to Use
+
+1. Open the "Movie Recording" accordion section in the controls
+2. Choose your animation type:
+   - **Edge Addition**: Click "Start Recording Edges", add edges in your graph, then "Stop Recording". Adjust duration and create the movie.
+   - **Simulation**: Select nodes, configure simulation parameters, and create a simulation movie
+   - **Combined**: Create movies with both edge additions and simulation steps
+3. Movies are automatically downloaded as WebM video files
 
 ## Keyboard Shortcuts
 

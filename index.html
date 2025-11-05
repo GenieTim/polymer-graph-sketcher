@@ -380,6 +380,14 @@
                   <small class="text-muted">Time between simulation steps in the video</small>
                 </div>
                 
+                <div class="mb-2 form-check">
+                  <input type="checkbox" id="adaptiveStepDuration" class="form-check-input">
+                  <label for="adaptiveStepDuration" class="form-check-label small">
+                    Adaptive step duration
+                  </label>
+                  <small class="text-muted d-block">When enabled, duration per step is treated as average. Steps with larger movements will be slower to make them easier to see.</small>
+                </div>
+                
                 <button type="button" class="btn btn-primary btn-sm w-100" id="createSimMovieBtn">
                   Create Simulation Movie
                 </button>

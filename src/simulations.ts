@@ -50,7 +50,7 @@ export function doForceBalanceStep(): void {
     GlobalSettings.instance.canvasSize.y
   );
   const boxHalf = boxSize.multiply(0.5);
-  console.log("Box size: " + boxSize.toString(), [boxHalf, boxSize]);
+  // console.log("Box size: " + boxSize.toString(), [boxHalf, boxSize]);
   // const allNodes = graph.getAllNodes();
   const allNodes = selection.getItemsOfClass(Node);
   allNodes.forEach((node) => {

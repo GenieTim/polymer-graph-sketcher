@@ -24,7 +24,7 @@ import { SVGCanvasRenderingContext2D } from "./svg-ctx";
 import { doForceBalanceStep, doPositionEquilibrationStep, doRandomWalk } from "./simulations";
 import { collapseEdgesByColor, removeTwofunctionalNodes } from "./topology";
 import { Colour } from "./Colours";
-import { MovieMaker, MoviePresets } from "./movie-maker";
+import { MovieMaker } from "./movie-maker";
 
 var canvas: HTMLCanvasElement = document.getElementById(
   "canvas"
@@ -488,6 +488,43 @@ function initializeMovieMaker() {
 }
 
 /**
+ * Scale up the canvas for high-resolution video recording
+ * Returns the original canvas size for restoration
+ */
+function scaleCanvasForVideo(): { x: number; y: number } {
+  const originalCanvasSize = {
+    x: settings.canvasSize.x,
+    y: settings.canvasSize.y,
+  };
+  
+  // Use the same scale factor as PNG export for consistency
+  const scaleFactor = settings.imageScaleFactor;
+  
+  // Save original state
+  showSelection = false;
+  settings.isScaled = true;
+  
+  // Scale up the canvas size
+  settings.canvasSize.x *= scaleFactor;
+  settings.canvasSize.y *= scaleFactor;
+  resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
+  
+  return originalCanvasSize;
+}
+
+/**
+ * Restore canvas to original size after video recording
+ */
+function restoreCanvasAfterVideo(originalSize: { x: number; y: number }) {
+  showSelection = true;
+  settings.isScaled = false;
+  settings.canvasSize.x = originalSize.x;
+  settings.canvasSize.y = originalSize.y;
+  resizeCanvas(settings.canvasSize.x, settings.canvasSize.y);
+  recomputeElementsToDraw();
+}
+
+/**
  * Start recording edge additions for animation
  */
 function startRecordingEdges() {
@@ -540,6 +577,12 @@ async function createEdgeAdditionMovie() {
     document.getElementById("edgeAnimationDuration") as HTMLInputElement
   ).valueAsNumber;
   const interpolationSteps = 30;
+
+  // Scale up canvas for high-resolution recording
+  const originalSize = scaleCanvasForVideo();
+  
+  // Reinitialize movie maker with the scaled canvas
+  initializeMovieMaker();
 
   // Clear any previous animation edges
   animationPartialEdges = [];
@@ -678,7 +721,106 @@ async function createEdgeAdditionMovie() {
     console.error('Error creating movie:', error);
     alert('Error creating movie: ' + error);
     updateMovieStatus('Error creating movie');
+  } finally {
+    // Restore canvas to original size
+    restoreCanvasAfterVideo(originalSize);
   }
+}
+
+/**
+ * Calculate adaptive step durations based on node movement
+ * Returns an array of durations where steps with more movement get longer durations
+ */
+function calculateAdaptiveStepDurations(
+  simulationStep: () => void,
+  stepCount: number,
+  averageDuration: number
+): number[] {
+  const minDurationMs = 50; // Minimum duration per step (at least 1 frame at 60fps would be ~16ms, but 50ms is safer)
+  const movements: number[] = [];
+  
+  // Save current graph state
+  const allNodes = graph.getAllNodes();
+  const savedPositions = new Map<number, { x: number; y: number }>();
+  allNodes.forEach(node => {
+    savedPositions.set(node.id, { x: node.coordinates.x, y: node.coordinates.y });
+  });
+  
+  // Run simulation steps and measure movement
+  for (let i = 0; i < stepCount; i++) {
+    const nodesBefore = new Map<number, { x: number; y: number }>();
+    allNodes.forEach(node => {
+      nodesBefore.set(node.id, { x: node.coordinates.x, y: node.coordinates.y });
+    });
+    
+    // Execute simulation step
+    simulationStep();
+    
+    // Calculate total movement for this step
+    let totalMovement = 0;
+    allNodes.forEach(node => {
+      const before = nodesBefore.get(node.id);
+      if (before) {
+        const dx = node.coordinates.x - before.x;
+        const dy = node.coordinates.y - before.y;
+        totalMovement += Math.sqrt(dx * dx + dy * dy);
+      }
+    });
+    
+    movements.push(totalMovement);
+  }
+  
+  // Restore original positions
+  allNodes.forEach(node => {
+    const saved = savedPositions.get(node.id);
+    if (saved) {
+      node.coordinates.x = saved.x;
+      node.coordinates.y = saved.y;
+    }
+  });
+  recomputeElementsToDraw();
+  
+  // Calculate weights and durations
+  const totalMovement = movements.reduce((sum, m) => sum + m, 0);
+  const totalDuration = averageDuration * stepCount;
+  const minTotalDuration = minDurationMs * stepCount;
+  const availableDuration = totalDuration - minTotalDuration;
+  
+  if (totalMovement === 0 || availableDuration <= 0) {
+    // No movement or not enough duration, use equal distribution
+    return new Array(stepCount).fill(averageDuration);
+  }
+  
+  // Distribute duration proportionally to movement
+  const durations = movements.map(movement => {
+    const proportionalDuration = (movement / totalMovement) * availableDuration;
+    return minDurationMs + proportionalDuration;
+  });
+  
+  return durations;
+}
+
+/**
+ * Create a simulation animation with custom duration per step
+ */
+function createAdaptiveSimulationAnimation(
+  simulationStep: () => void,
+  redrawCallback: () => void,
+  stepDurations: number[]
+): any {
+  const frames = stepDurations.map(duration => ({
+    action: () => {
+      simulationStep();
+      redrawCallback();
+    },
+    duration: duration,
+  }));
+
+  return {
+    name: 'Adaptive Simulation Animation',
+    frames,
+    defaultFrameDuration: stepDurations[0] || 300,
+  };
 }
 
 /**
@@ -698,6 +840,15 @@ async function createSimulationMovie() {
   const stepDuration = (
     document.getElementById("simulationStepDuration") as HTMLInputElement
   ).valueAsNumber;
+  const useAdaptiveDuration = (
+    document.getElementById("adaptiveStepDuration") as HTMLInputElement
+  ).checked;
+
+  // Scale up canvas for high-resolution recording
+  const originalSize = scaleCanvasForVideo();
+  
+  // Reinitialize movie maker with the scaled canvas
+  initializeMovieMaker();
 
   // Determine which simulation function to use
   let simulationStep: () => void;
@@ -711,17 +862,28 @@ async function createSimulationMovie() {
     simulationName = 'Position Equilibration';
   } else {
     alert('Invalid simulation type');
+    restoreCanvasAfterVideo(originalSize);
     return;
   }
 
-  // Create animation sequence
-  const sequence = MoviePresets.createSimulationAnimation(
+  // Calculate adaptive durations if enabled
+  let stepDurations: number[];
+  if (useAdaptiveDuration) {
+    stepDurations = calculateAdaptiveStepDurations(
+      simulationStep,
+      stepCount,
+      stepDuration
+    );
+  } else {
+    // Use constant duration for all steps
+    stepDurations = new Array(stepCount).fill(stepDuration);
+  }
+
+  // Create animation sequence with calculated durations
+  const sequence = createAdaptiveSimulationAnimation(
     simulationStep,
     () => recomputeElementsToDraw(),
-    {
-      stepCount: stepCount,
-      stepDuration: stepDuration,
-    }
+    stepDurations
   );
 
   // Record the movie
@@ -737,6 +899,9 @@ async function createSimulationMovie() {
     console.error('Error creating movie:', error);
     alert('Error creating movie: ' + error);
     updateMovieStatus('Error creating movie');
+  } finally {
+    // Restore canvas to original size
+    restoreCanvasAfterVideo(originalSize);
   }
 }
 

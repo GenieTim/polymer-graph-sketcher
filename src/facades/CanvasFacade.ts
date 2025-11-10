@@ -1,6 +1,6 @@
-import { Drawable } from "../drawables";
-import { GlobalSettings } from "../settings";
-import { Point } from "../primitives";
+import { Drawable } from "../rendering";
+import { GlobalSettings } from "../utils/GlobalSettings";
+import { Point } from "../models";
 
 /**
  * Facade for canvas operations

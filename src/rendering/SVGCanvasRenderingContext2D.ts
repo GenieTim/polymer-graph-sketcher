@@ -1,4 +1,4 @@
-import { Point } from "./primitives";
+import { Point } from "../models";
 
 interface DrawingState {
   fillStyle: string | CanvasGradient | CanvasPattern;

@@ -1,6 +1,6 @@
 import { Container } from "./Container";
 import { ObservableValue } from "./Observable";
-import { Drawable } from "../drawables";
+import { Drawable } from "../rendering";
 
 /**
  * Main Application class that coordinates the entire application

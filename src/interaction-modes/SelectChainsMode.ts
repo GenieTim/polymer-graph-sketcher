@@ -1,11 +1,11 @@
-import { IInteractionMode } from "./IInteractionMode";
+import { InteractionMode } from "./InteractionMode";
 import { ActionManager, SelectNodesAction } from "../actions";
-import { Point } from "../primitives";
+import { Point } from "../models";
 
 /**
  * Select chains mode - selects all connected nodes
  */
-export class SelectChainsMode implements IInteractionMode {
+export class SelectChainsMode implements InteractionMode {
   name = "select_chains";
 
   constructor(private graph: any) {}

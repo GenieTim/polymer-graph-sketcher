@@ -1,4 +1,4 @@
-import { Point } from "./primitives";
+import { Point } from "../models/Point";
 
 /**
  * A settings class, which is a singleton pattern.

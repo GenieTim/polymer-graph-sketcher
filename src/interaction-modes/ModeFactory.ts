@@ -1,4 +1,4 @@
-import { IInteractionMode } from "./IInteractionMode";
+import { InteractionMode } from "./InteractionMode";
 import { VertexMode } from "./VertexMode";
 import { EdgeMode } from "./EdgeMode";
 import { SelectMode } from "./SelectMode";
@@ -6,36 +6,44 @@ import { SelectChainsMode } from "./SelectChainsMode";
 import { DeleteVertexMode } from "./DeleteVertexMode";
 import { DeleteEdgeMode } from "./DeleteEdgeMode";
 import { RandomWalkMode } from "./RandomWalkMode";
-import { Point } from "../primitives";
+import { Point } from "../models";
+import { Container } from "../core/Container";
+import { UIFacade } from "../facades/UIFacade";
 
 /**
  * Factory for creating and managing interaction modes
  * Implements the Factory pattern
  */
 export class InteractionModeFactory {
-  private modes = new Map<string, IInteractionMode>();
-  private currentMode: IInteractionMode | null = null;
+  private modes = new Map<string, InteractionMode>();
+  private currentMode: InteractionMode | null = null;
 
   constructor(
     nodeCounter: { value: number },
     graph: any,
     selection: any,
-    doRandomWalk: (startPoint: Point) => any
+    doRandomWalk: (startPoint: Point) => any,
+    container: Container
   ) {
+    const uiFacade = container.get<UIFacade>("ui");
+    
     // Register all available modes
-    this.modes.set("vertex", new VertexMode(nodeCounter));
-    this.modes.set("edge", new EdgeMode(graph, selection));
-    this.modes.set("select", new SelectMode(graph, selection));
+    this.modes.set("vertex", new VertexMode(nodeCounter, uiFacade));
+    this.modes.set("edge", new EdgeMode(graph, selection, uiFacade));
+    this.modes.set("select", new SelectMode(graph, selection, container));
     this.modes.set("select_chains", new SelectChainsMode(graph));
     this.modes.set("delete_vertex", new DeleteVertexMode(graph));
     this.modes.set("delete_edge", new DeleteEdgeMode(graph, selection));
-    this.modes.set("random_walk", new RandomWalkMode(nodeCounter, doRandomWalk));
+    this.modes.set("random_walk", new RandomWalkMode(nodeCounter, doRandomWalk, uiFacade));
+
+    // Initial mode
+    this.setCurrentMode("vertex");
   }
 
   /**
    * Get a mode by name
    */
-  getMode(name: string): IInteractionMode | null {
+  getMode(name: string): InteractionMode | null {
     return this.modes.get(name) || null;
   }
 
@@ -68,7 +76,7 @@ export class InteractionModeFactory {
   /**
    * Get the current active mode
    */
-  getCurrentMode(): IInteractionMode | null {
+  getCurrentMode(): InteractionMode | null {
     return this.currentMode;
   }
 
@@ -82,7 +90,7 @@ export class InteractionModeFactory {
   /**
    * Get a specific mode instance (for setting callbacks, etc.)
    */
-  getModeInstance<T extends IInteractionMode>(name: string): T | null {
+  getModeInstance<T extends InteractionMode>(name: string): T | null {
     return this.modes.get(name) as T || null;
   }
 }

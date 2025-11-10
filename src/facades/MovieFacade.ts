@@ -1,5 +1,5 @@
-import { MovieMaker } from "../movie-maker";
-import { Node } from "../graph";
+import { MovieMaker } from "../animation/movie-maker";
+import { Node } from "../models";
 
 /**
  * Facade for movie recording operations

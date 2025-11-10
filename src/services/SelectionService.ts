@@ -1,6 +1,6 @@
 export interface Selectable {}
 
-class Selection {
+export class SelectionService {
   private selectedItems: Selectable[] = [];
 
   toggleItems(items: Selectable[]): void {
@@ -64,4 +64,4 @@ class Selection {
   }
 }
 
-export const selection = new Selection();
+export const selection = new SelectionService();

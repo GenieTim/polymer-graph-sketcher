@@ -1,16 +1,18 @@
-import { IInteractionMode } from "./IInteractionMode";
+import { InteractionMode } from "./InteractionMode";
 import { ActionManager, AddNodesAction, AddEdgesAction } from "../actions";
-import { Point } from "../primitives";
+import { Point } from "../models";
+import { UIFacade } from "../facades/UIFacade";
 
 /**
  * Random walk mode - creates a random walk from click point
  */
-export class RandomWalkMode implements IInteractionMode {
+export class RandomWalkMode implements InteractionMode {
   name = "random_walk";
 
   constructor(
     private nodeCounter: { value: number },
-    private doRandomWalk: (startPoint: Point) => any
+    private doRandomWalk: (startPoint: Point) => any,
+    private uiFacade: UIFacade
   ) {}
 
   onCanvasClick(point: Point, actionManager: ActionManager): void {
@@ -20,7 +22,8 @@ export class RandomWalkMode implements IInteractionMode {
     actionManager.addAction(
       new AddEdgesAction(
         walk.edges.map((edge: any) => edge.fromId),
-        walk.edges.map((edge: any) => edge.toId)
+        walk.edges.map((edge: any) => edge.toId),
+        this.uiFacade
       )
     );
     

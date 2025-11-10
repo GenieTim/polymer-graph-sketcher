@@ -1,11 +1,11 @@
 import { ActionManager } from "../actions";
-import { Point } from "../primitives";
+import { Point } from "../models";
 
 /**
  * Interface for interaction modes using the Strategy pattern
  * Each mode implements how the canvas responds to user interactions
  */
-export interface IInteractionMode {
+export interface InteractionMode {
   /** The name/identifier of this interaction mode */
   name: string;
 

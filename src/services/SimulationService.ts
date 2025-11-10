@@ -1,7 +1,7 @@
-import { Edge, graph, Node } from "./graph";
-import { Point, Vector2d } from "./primitives";
-import { selection } from "./selection";
-import { GlobalSettings } from "./settings";
+import { Edge, graph, Node } from "../models";
+import { Point, Vector2d } from "../models";
+import { selection } from "./SelectionService";
+import { GlobalSettings } from "../utils/GlobalSettings";
 
 function PBC(distance: Vector2d, boxHalf: Vector2d): Vector2d {
   // do PBC

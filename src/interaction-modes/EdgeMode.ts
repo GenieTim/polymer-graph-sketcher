@@ -1,17 +1,19 @@
-import { IInteractionMode } from "./IInteractionMode";
+import { InteractionMode } from "./InteractionMode";
 import { ActionManager, AddEdgeAction, SelectNodesAction } from "../actions";
-import { Point } from "../primitives";
-import { Node } from "../graph";
+import { Point } from "../models";
+import { Node } from "../models";
+import { UIFacade } from "../facades/UIFacade";
 
 /**
  * Edge mode - creates edges between selected nodes
  */
-export class EdgeMode implements IInteractionMode {
+export class EdgeMode implements InteractionMode {
   name = "edge";
 
   constructor(
     private graph: any,
     private selection: any,
+    private uiFacade: UIFacade,
     private recordingCallback?: (fromNode: Node, toNode: Node) => void
   ) {}
 
@@ -29,7 +31,7 @@ export class EdgeMode implements IInteractionMode {
         }
         
         actionManager.addAction(
-          new AddEdgeAction(newSelectedNode, this.selection.getItemsOfClass(Node))
+          new AddEdgeAction(newSelectedNode, this.selection.getItemsOfClass(Node), this.uiFacade)
         );
       } else {
         actionManager.addAction(new SelectNodesAction([newSelectedNode]));

@@ -1,71 +1,14 @@
-import { Point } from "./primitives";
-import { Circle, Drawable, Line } from "./drawables";
-import { Selectable } from "./selection";
-
-export class Node implements Selectable {
-  id: number;
-  coordinates: Point;
-  radius: number;
-  strokeWidth: number;
-  fillColor: string;
-  strokeColor: string;
-
-  constructor(
-    id: number,
-    coordinates: Point,
-    radius: number = 5,
-    strokeWidth: number = 1,
-    fillColor: string = "#000",
-    strokeColor: string = "#000"
-  ) {
-    // validate that `id` is integer
-    if (typeof id !== "number" || !Number.isInteger(id) || id < 0) {
-      throw new Error(
-        "Invalid `id` parameter. It must be a non-negative integer, got `" +
-          id +
-          "`."
-      );
-    }
-
-    this.id = id;
-    this.coordinates = coordinates;
-    this.radius = radius;
-    this.strokeWidth = strokeWidth;
-    this.fillColor = fillColor;
-    this.strokeColor = strokeColor;
-  }
-}
-
-export class Edge {
-  fromId: number;
-  toId: number;
-  weight: number;
-  color: string;
-  id: number;
-
-  constructor(
-    fromId: number,
-    toId: number,
-    id: number,
-    weight: number = 1,
-    color: string = "#000"
-  ) {
-    this.fromId = fromId;
-    this.toId = toId;
-    this.id = id;
-    this.weight = weight;
-    this.color = color;
-  }
-
-  getOtherNodeId(nodeId: number): number {
-    return this.fromId === nodeId ? this.toId : this.fromId;
-  }
-}
+import { Point } from "./Point";
+import { Node } from "./Node";
+import { Edge } from "./Edge";
+import { Drawable } from "../rendering/Drawable";
+import { Circle } from "../rendering/Circle";
+import { Line } from "../rendering/Line";
 
 /**
  * A class representing a graph with nodes and edges.
  */
-class Graph {
+export class Graph {
   private nodes: { [key: string]: Node };
   private edges: Edge[];
   private scalingFactor: Point;

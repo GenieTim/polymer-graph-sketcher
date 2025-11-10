@@ -1,12 +1,12 @@
-import { IInteractionMode } from "./IInteractionMode";
+import { InteractionMode } from "./InteractionMode";
 import { ActionManager, DeleteEdgesAction, SelectNodesAction } from "../actions";
-import { Point } from "../primitives";
-import { Node } from "../graph";
+import { Point } from "../models";
+import { Node } from "../models";
 
 /**
  * Delete edge mode - deletes edges between nodes
  */
-export class DeleteEdgeMode implements IInteractionMode {
+export class DeleteEdgeMode implements InteractionMode {
   name = "delete_edge";
 
   constructor(

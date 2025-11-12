@@ -32,7 +32,7 @@
     }
   </style>
 
-  <script type="module" crossorigin src="./assets/index-BDKiWOwa.js"></script>
+  <script type="module" crossorigin src="./assets/index-T0wD7svy.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-DblMlOpV.css">
 </head>
 
@@ -303,7 +303,7 @@
             </div>
           </div>
         </div>
-        
+
         <!--  -->
         <div class="accordion-item">
           <h2 class="accordion-header">
@@ -316,21 +316,23 @@
         <div id="movieRecordingCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
           <div class="accordion-body">
             <div class="alert alert-info" role="alert">
-              <strong>Create animated movies</strong> of edge additions and simulation steps, then export as video files.
+              <strong>Create animated movies</strong> of edge additions and simulation steps, then export as video
+              files.
             </div>
-            
+
             <!-- Edge Addition Recording -->
             <div class="card mb-3">
               <div class="card-header">
                 <strong>1. Edge Animation</strong>
               </div>
               <div class="card-body">
-                <p class="text-muted small">Record edges as you add or remove them, then create an animated movie showing the changes smoothly.</p>
-                
+                <p class="text-muted small">Record edges as you add or remove them, then create an animated movie
+                  showing the changes smoothly.</p>
+
                 <div class="mb-2">
                   <span id="recordingIndicator" class="badge bg-secondary">Not recording</span>
                 </div>
-                
+
                 <div class="btn-group mb-2" role="group">
                   <button type="button" class="btn btn-success btn-sm" id="startRecordingEdgesBtn">
                     Start Recording Edges
@@ -339,20 +341,20 @@
                     Stop Recording
                   </button>
                 </div>
-                
+
                 <div class="mb-2">
                   <label for="edgeAnimationDuration" class="form-label small">Duration per edge (ms):</label>
-                  <input type="number" id="edgeAnimationDuration" class="form-control form-control-sm" 
-                         min="100" max="5000" step="100" value="500">
+                  <input type="number" id="edgeAnimationDuration" class="form-control form-control-sm" min="100"
+                    max="5000" step="100" value="500">
                   <small class="text-muted">How long each edge takes to appear in the animation</small>
                 </div>
-                
+
                 <button type="button" class="btn btn-primary btn-sm w-100" id="createEdgeMovieBtn">
                   Create Edge Animation Movie
                 </button>
               </div>
             </div>
-            
+
             <!-- Simulation Recording -->
             <div class="card mb-3">
               <div class="card-header">
@@ -360,7 +362,7 @@
               </div>
               <div class="card-body">
                 <p class="text-muted small">Record simulation steps at a controlled speed for smooth playback.</p>
-                
+
                 <div class="mb-2">
                   <label for="simulationType" class="form-label small">Simulation type:</label>
                   <select id="simulationType" class="form-select form-select-sm">
@@ -368,37 +370,47 @@
                     <option value="position_equilibration">Position Equilibration</option>
                   </select>
                 </div>
-                
+
                 <div class="mb-2">
                   <label for="simulationStepCount" class="form-label small">Number of steps:</label>
-                  <input type="number" id="simulationStepCount" class="form-control form-control-sm" 
-                         min="1" max="500" step="1" value="50">
+                  <input type="number" id="simulationStepCount" class="form-control form-control-sm" min="1" max="1000"
+                    step="1" value="500">
                 </div>
-                
+
                 <div class="mb-2">
                   <label for="simulationStepDuration" class="form-label small">Duration per step (ms):</label>
-                  <input type="number" id="simulationStepDuration" class="form-control form-control-sm" 
-                         min="50" max="2000" step="50" value="300">
+                  <input type="number" id="simulationStepDuration" class="form-control form-control-sm" min="10"
+                    max="2000" step="50" value="10">
                   <small class="text-muted">Time between simulation steps in the video</small>
                 </div>
-                
+
+                <div class="mb-2 form-check">
+                  <input type="checkbox" id="adaptiveStepDuration" class="form-check-input">
+                  <label for="adaptiveStepDuration" class="form-check-label small">
+                    Adaptive step duration
+                  </label>
+                  <small class="text-muted d-block">When enabled, duration per step is treated as average. Steps with
+                    larger movements will be slower to make them easier to see.</small>
+                </div>
+
                 <button type="button" class="btn btn-primary btn-sm w-100" id="createSimMovieBtn">
                   Create Simulation Movie
                 </button>
               </div>
             </div>
-            
+
             <div id="movieStatus" class="alert alert-secondary mt-3" role="alert" style="display: none;">
               Status updates will appear here...
             </div>
           </div>
         </div>
-        
+
         <!-- finish accordion -->
       </div>
 
       <div class="mt-2">
         <button type="button" class="btn btn-danger" id="clearCanvasButton">Clear canvas</button>
+        <button type="button" class="btn btn-warning" id="clearSavedStateButton">Clear saved state</button>
 
         <button type="button" class="btn btn-primary" id="saveImageButton">
           Save as image

@@ -12,16 +12,13 @@ import {
 } from "../actions";
 import { Edge, Graph, Node } from "../models";
 import { Colour } from "../utils/Colour";
-import { SVGCanvasRenderingContext2D } from "../rendering/SVGCanvasRenderingContext2D";
-import { collapseEdgesByColor, removeTwofunctionalNodes } from "../topology";
-import { SelectionService } from "../services";
+import { SelectionService, GraphOperationsService, FileService } from "../services";
 import { Application } from "../core/Application";
 import { GlobalSettings } from "../utils";
 import { CanvasFacade } from "../facades/CanvasFacade";
 import type { UIFacade } from "../facades/UIFacade";
 import type { MovieFacade } from "../facades/MovieFacade";
 import type { InteractionModeFactory } from "../interaction-modes/ModeFactory";
-import type { PartialLine } from "../rendering/PartialLine";
 
 /**
  * Controller for UI-related events
@@ -265,6 +262,8 @@ export class UIController {
    */
   private attachButtonListeners(): void {
     const actionManager = this.container.get<ActionManager>("actionManager");
+    const graphOps = this.container.get<GraphOperationsService>("graphOperations");
+    const fileService = this.container.get<FileService>("fileService");
 
     // Selection action buttons - simplified pattern
     this.attachButtonClick("clearSelectionButton", () => {
@@ -281,22 +280,24 @@ export class UIController {
 
     // Clear canvas button
     this.attachButtonClick("clearCanvasButton", () => {
-      const graph = this.container.get<Graph>("graph");
-      const selection = this.container.get<SelectionService>("selection");
-      const modeFactory =
-        this.container.get<InteractionModeFactory>("modeFactory");
-      const app = this.container.get<Application>("app");
+      graphOps.clearGraph();
+    });
 
-      graph.clear();
-      selection.clearSelection();
-      modeFactory.setCurrentMode("vertex");
-      app.render();
+    // Clear saved state button
+    this.attachButtonClick("clearSavedStateButton", () => {
+      if (confirm("Are you sure you want to clear the saved state? This action cannot be undone.")) {
+        const StorageService = this.container.get<any>("StorageService");
+        if (StorageService) {
+          StorageService.clearState();
+          alert("Saved state has been cleared. The current canvas will be saved when you leave or reload the page.");
+        }
+      }
     });
 
     // File operations
-    this.attachButtonClick("exportGraphButton", () => this.exportGraph());
+    this.attachButtonClick("exportGraphButton", () => fileService.exportGraph());
     this.attachButtonClick("saveImageButton", () => this.saveCanvasAsImage());
-    this.attachButtonClick("saveSvgButton", () => this.saveGraphAsSvg());
+    this.attachButtonClick("saveSvgButton", () => fileService.saveGraphAsSvg());
     this.attachInputChange("import", () => this.importGraph());
 
     // Movie recording buttons
@@ -314,20 +315,18 @@ export class UIController {
     );
 
     // Graph manipulation buttons
-    const graph = this.container.get<Graph>("graph");
-    const app = this.container.get<Application>("app");
-
     this.attachButtonClick("removeDuplicateEdges", () => {
-      graph.removeDuplicateEdges();
-      app.render();
+      graphOps.removeDuplicateEdges();
     });
 
     this.attachButtonClick("removeSelfEdges", () => {
-      graph.cleanupEdges();
-      app.render();
+      graphOps.removeSelfEdges();
     });
 
     // Simulation buttons
+    const graph = this.container.get<Graph>("graph");
+    const app = this.container.get<Application>("app");
+
     this.attachButtonClick("forceBalanceStep", () => {
       const simulations = this.container.get<any>("simulations");
       const uiFacade = this.container.get<UIFacade>("ui");
@@ -356,10 +355,10 @@ export class UIController {
       this.generateSideChains()
     );
     this.attachButtonClick("bifunctionalRemoval", () =>
-      this.removeBifunctionalNodes()
+      graphOps.removeBifunctionalNodes()
     );
     this.attachInputChange("mergeConnectionColor", (element) =>
-      this.mergeEdgesByColor(element.value)
+      graphOps.mergeEdgesByColor(element.value)
     );
   }
 
@@ -379,87 +378,7 @@ export class UIController {
     });
   }
 
-  /**
-   * Helper to scale canvas up/down for high-res rendering
-   */
-  private withScaledCanvas<T>(callback: () => T | Promise<T>): T | Promise<T> {
-    const app = this.container.get<Application>("app");
-    const settings = this.container.get<GlobalSettings>("settings");
-    const canvasFacade = this.container.get<CanvasFacade>("canvas");
-    const graph = this.container.get<Graph>("graph");
 
-    // Store original state
-    const originalShowSelection = app.showSelection.value;
-    const originalIsScaled = settings.isScaled;
-    const originalCanvasSize = {
-      x: settings.canvasSize.x,
-      y: settings.canvasSize.y,
-    };
-
-    // Scale up for high-resolution
-    app.showSelection.value = false;
-    settings.isScaled = true;
-    settings.canvasSize.x *= settings.imageScaleFactor;
-    settings.canvasSize.y *= settings.imageScaleFactor;
-
-    canvasFacade.resizeWithGraphScaling(
-      settings.canvasSize.x,
-      settings.canvasSize.y,
-      true,
-      graph
-    );
-
-    const restore = () => {
-      app.showSelection.value = originalShowSelection;
-      settings.isScaled = originalIsScaled;
-      settings.canvasSize.x = originalCanvasSize.x;
-      settings.canvasSize.y = originalCanvasSize.y;
-
-      canvasFacade.resizeWithGraphScaling(
-        settings.canvasSize.x,
-        settings.canvasSize.y,
-        true,
-        graph
-      );
-
-      app.render();
-    };
-
-    try {
-      const result = callback();
-      // Handle both sync and async callbacks
-      if (result instanceof Promise) {
-        return result.finally(restore) as T;
-      } else {
-        restore();
-        return result;
-      }
-    } catch (error) {
-      restore();
-      throw error;
-    }
-  }
-
-  /**
-   * Export the graph to a JSON file
-   */
-  private exportGraph(): void {
-    const graph = this.container.get<Graph>("graph");
-    const settings = this.container.get<GlobalSettings>("settings");
-
-    const blob = new Blob(
-      [JSON.stringify({ graph: graph, settings: settings })],
-      {
-        type: "application/json",
-      }
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "graph.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
 
   /**
    * Import a graph from a JSON file
@@ -467,111 +386,31 @@ export class UIController {
   private importGraph(): void {
     const fileInput = document.getElementById("import") as HTMLInputElement;
     const file = fileInput.files?.[0];
-
+    
     if (!file) return;
 
-    const graph = this.container.get<Graph>("graph");
-    const settings = this.container.get<GlobalSettings>("settings");
-    const uiFacade = this.container.get<UIFacade>("ui");
-    const canvasFacade = this.container.get<CanvasFacade>("canvas");
-    const app = this.container.get<Application>("app");
-
-    const reader = new FileReader();
-
-    reader.onload = (event: ProgressEvent<FileReader>) => {
-      if (event.target?.result) {
-        const jsonGraph = JSON.parse(event.target.result as string);
-
-        if ("settings" in jsonGraph) {
-          // Import settings
-          const importedSettings = jsonGraph.settings;
-          settings.canvasSize.x = importedSettings.canvasSize.x;
-          settings.canvasSize.y = importedSettings.canvasSize.y;
-          settings.backgroundColor = importedSettings.backgroundColor;
-          settings.imageScaleFactor = importedSettings.imageScaleFactor;
-          if ("disablePBC" in importedSettings) {
-            settings.disablePBC = importedSettings.disablePBC;
-          }
-
-          // Update canvas
-          const canvasParent = document.getElementById(
-            "canvas-parent"
-          ) as HTMLElement;
-          canvasParent.style.width = settings.canvasSize.x + "px";
-          canvasParent.style.height = settings.canvasSize.y + "px";
-          uiFacade.setValue("canvasWidth", settings.canvasSize.x);
-          uiFacade.setValue("canvasHeight", settings.canvasSize.y);
-          canvasFacade.resize(settings.canvasSize.x, settings.canvasSize.y);
-
-          // Import graph
-          graph.fromJSON(jsonGraph.graph);
-        } else {
-          // Legacy format - just graph data
-          graph.fromJSON(jsonGraph);
-        }
-
-        // Update node counter
-        const nodeCounter = this.container.get<{ value: number }>(
-          "nodeCounter"
-        );
-        if (nodeCounter) {
-          const nodeIds = graph
-            .getAllNodeIds()
-            .filter((id: number) => !isNaN(id));
-          nodeCounter.value = nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 0;
-        }
-
-        // Re-render
-        app.render();
-      }
-    };
-
-    reader.readAsText(file);
+    const fileService = this.container.get<FileService>("fileService");
+    fileService.importGraph(file);
   }
 
   /**
-   * Save the canvas as a PNG image
+   * Save the canvas as a PNG image (high-res with scaling)
    */
   private saveCanvasAsImage(): void {
-    this.withScaledCanvas(() => {
-      const app = this.container.get<Application>("app");
-      const canvasFacade = this.container.get<CanvasFacade>("canvas");
-
-      app.render();
-
-      const image = canvasFacade.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.href = image;
-      link.download = "polymer-graph-sketch.png";
-      link.click();
-    });
-  }
-
-  /**
-   * Save the graph as an SVG file
-   */
-  private saveGraphAsSvg(): void {
+    const fileService = this.container.get<FileService>("fileService");
+    const canvasFacade = this.container.get<CanvasFacade>("canvas");
     const settings = this.container.get<GlobalSettings>("settings");
     const app = this.container.get<Application>("app");
+    const graph = this.container.get<Graph>("graph");
 
-    // Create SVG context
-    const svgCtx = new SVGCanvasRenderingContext2D(
-      settings.canvasSize.x,
-      settings.canvasSize.y
+    // Use canvas scaling helper
+    canvasFacade.withScaledCanvas(
+      () => fileService.saveCanvasAsImage(),
+      settings.imageScaleFactor,
+      app,
+      graph,
+      settings
     );
-
-    // Draw to SVG context
-    app.elementsToDraw.value.forEach((element: any) => {
-      element.draw(svgCtx);
-    });
-
-    // Get SVG and download
-    const svg: SVGSVGElement = svgCtx.getSVG();
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const a = document.createElement("a");
-    a.href = "data:image/svg+xml;base64," + btoa(svgData);
-    a.download = "graph.svg";
-    a.click();
   }
 
   /**
@@ -675,25 +514,7 @@ export class UIController {
     });
   }
 
-  /**
-   * Remove bifunctional (2-connected) nodes
-   */
-  private removeBifunctionalNodes(): void {
-    const app = this.container.get<Application>("app");
 
-    removeTwofunctionalNodes();
-    app.render();
-  }
-
-  /**
-   * Merge/collapse edges by color
-   */
-  private mergeEdgesByColor(color: string): void {
-    const app = this.container.get<Application>("app");
-
-    collapseEdgesByColor(color);
-    app.render();
-  }
 
   /**
    * Start recording edge additions
@@ -802,8 +623,10 @@ export class UIController {
    */
   private async createEdgeAdditionMovie(): Promise<void> {
     const movieFacade = this.container.get<MovieFacade>("movie");
-    const graph = this.container.get<Graph>("graph");
+    const canvasFacade = this.container.get<CanvasFacade>("canvas");
+    const settings = this.container.get<GlobalSettings>("settings");
     const app = this.container.get<Application>("app");
+    const graph = this.container.get<Graph>("graph");
     const uiFacade = this.container.get<UIFacade>("ui");
 
     const recordedEdges = movieFacade.getRecordedEdges();
@@ -821,166 +644,16 @@ export class UIController {
       uiFacade.getInputValueAsNumber("edgeAnimationDuration") || 1000;
     const interpolationSteps = 30;
 
-    await this.withScaledCanvas(async () => {
+    await canvasFacade.withScaledCanvas(async () => {
       // Reinitialize movie maker with scaled canvas
       movieFacade.initialize();
 
-      // Calculate initial state by tracking net changes
-      const edgeNetChanges = new Map<string, any>();
-      recordedEdges.forEach(
-        ({ type, fromNode, toNode, color, weight }: any) => {
-          const key =
-            fromNode.id < toNode.id
-              ? `${fromNode.id}-${toNode.id}`
-              : `${toNode.id}-${fromNode.id}`;
-
-          edgeNetChanges.set(key, {
-            lastAction: type,
-            fromNode,
-            toNode,
-            color,
-            weight,
-          });
-        }
-      );
-
-      // Restore to initial state
-      const animationPartialEdges: any[] = [];
-      edgeNetChanges.forEach((netChange) => {
-        const edges = graph.getEdgesInvolvingNodes([
-          netChange.fromNode.id,
-          netChange.toNode.id,
-        ]);
-        const matchingEdge = edges.find(
-          (edge: any) =>
-            (edge.fromId === netChange.fromNode.id &&
-              edge.toId === netChange.toNode.id) ||
-            (edge.fromId === netChange.toNode.id &&
-              edge.toId === netChange.fromNode.id)
-        );
-
-        if (netChange.lastAction === "add") {
-          if (matchingEdge) {
-            graph.deleteEdge(matchingEdge);
-          }
-        } else {
-          if (!matchingEdge) {
-            graph.addEdge(
-              netChange.fromNode.id,
-              netChange.toNode.id,
-              netChange.color,
-              netChange.weight
-            );
-          }
-        }
-      });
-
-      app.render();
-
-      // Create animation frames
-      const frames: any[] = [];
-      recordedEdges.forEach(
-        ({ type, fromNode, toNode, color, weight }: any, edgeIndex: number) => {
-          const stepDuration = edgeDuration / interpolationSteps;
-
-          const PartialLineClass =
-            this.container.get<typeof PartialLine>("PartialLine");
-          const partialLine = new PartialLineClass(
-            { x: fromNode.coordinates.x, y: fromNode.coordinates.y },
-            { x: toNode.coordinates.x, y: toNode.coordinates.y },
-            type === "add" ? 0 : 1,
-            true,
-            color,
-            weight,
-            graph.zigzagSpacing,
-            graph.zigzagLength,
-            graph.zigzagEndLengths
-          );
-
-          for (let i = 0; i <= interpolationSteps; i++) {
-            const progress = i / interpolationSteps;
-
-            frames.push({
-              action: () => {
-                if (type === "add") {
-                  if (i === 0) {
-                    animationPartialEdges[edgeIndex] = partialLine;
-                  } else if (i < interpolationSteps) {
-                    partialLine.setProgress(progress);
-                  } else {
-                    animationPartialEdges[edgeIndex] = null;
-                    graph.addEdge(fromNode.id, toNode.id, color, weight);
-                  }
-                } else {
-                  if (i === 0) {
-                    const edges = graph.getEdgesInvolvingNodes([
-                      fromNode.id,
-                      toNode.id,
-                    ]);
-                    const edgeToRemove = edges.find(
-                      (edge: any) =>
-                        (edge.fromId === fromNode.id &&
-                          edge.toId === toNode.id) ||
-                        (edge.fromId === toNode.id && edge.toId === fromNode.id)
-                    );
-                    if (edgeToRemove) {
-                      graph.deleteEdge(edgeToRemove);
-                    }
-                    animationPartialEdges[edgeIndex] = partialLine;
-                  } else if (i < interpolationSteps) {
-                    partialLine.setProgress(1 - progress);
-                  } else {
-                    animationPartialEdges[edgeIndex] = null;
-                  }
-                }
-
-                // Update elements to draw with partial edges
-                const elements = [...graph.toDrawables()];
-                animationPartialEdges.forEach((partial: any) => {
-                  if (partial) elements.push(partial);
-                });
-                app.elementsToDraw.value = elements;
-                app.render();
-              },
-              duration: stepDuration,
-            });
-          }
-        }
-      );
-
-      const sequence = {
-        name: "Edge Animation",
-        frames,
-        defaultFrameDuration: edgeDuration / interpolationSteps,
-        onComplete: () => {
-          animationPartialEdges.length = 0;
-        },
-      };
-
-      const addCount = recordedEdges.filter(
-        (e: any) => e.type === "add"
-      ).length;
-      const removeCount = recordedEdges.filter(
-        (e: any) => e.type === "remove"
-      ).length;
-      uiFacade.updateMovieStatus(
-        `Recording edge animation (${addCount} additions, ${removeCount} removals)...`
-      );
-
       try {
-        const movieMaker = movieFacade.getMovieMaker();
-        if (!movieMaker) {
-          throw new Error("Movie maker not initialized");
-        }
-        await movieMaker.recordMovie([sequence], "edge-animation.webm");
-        uiFacade.updateMovieStatus("Movie saved successfully!");
-        setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
+        await movieFacade.createEdgeAdditionMovie(edgeDuration, interpolationSteps);
       } catch (error) {
-        console.error("Error creating movie:", error);
-        alert("Error creating movie: " + error);
-        uiFacade.updateMovieStatus("Error creating movie");
+        alert(error);
       }
-    });
+    }, settings.imageScaleFactor, app, graph, settings);
   }
 
   /**
@@ -988,8 +661,10 @@ export class UIController {
    */
   private async createSimulationMovie(): Promise<void> {
     const movieFacade = this.container.get<MovieFacade>("movie");
-    const graph = this.container.get<Graph>("graph");
+    const canvasFacade = this.container.get<CanvasFacade>("canvas");
+    const settings = this.container.get<GlobalSettings>("settings");
     const app = this.container.get<Application>("app");
+    const graph = this.container.get<Graph>("graph");
     const uiFacade = this.container.get<UIFacade>("ui");
 
     // Initialize movie maker if needed
@@ -1007,148 +682,20 @@ export class UIController {
       "adaptiveStepDuration"
     );
 
-    // Get simulation function
-    const simulations = this.container.get<any>("simulations");
-    let simulationStep: () => void;
-    let simulationName: string;
+    await canvasFacade.withScaledCanvas(async () => {
+      // Reinitialize movie maker with scaled canvas
+      movieFacade.initialize();
 
-    if (simulationType === "force_balance") {
-      simulationStep = () => simulations.doForceBalanceStep(graph);
-      simulationName = "Force Balance";
-    } else if (simulationType === "position_equilibration") {
-      simulationStep = () => simulations.doPositionEquilibrationStep(graph);
-      simulationName = "Position Equilibration";
-    } else {
-      alert("Invalid simulation type");
-      return;
-    }
-
-    // Save node positions to restore later
-    const savedPositions = new Map<number, { x: number; y: number }>();
-    graph.getAllNodes().forEach((node: Node) => {
-      savedPositions.set(node.id, {
-        x: node.coordinates.x,
-        y: node.coordinates.y,
-      });
-    });
-
-    try {
-      //
-      let stepDurations = Array(stepCount).fill(stepDuration);
-
-      if (adaptiveStepDuration) {
-        // do all steps once to measure distances, and compute adaptive durations
-        const initialPositions = new Map<number, { x: number; y: number }>();
-        graph.getAllNodes().forEach((node: Node) => {
-          initialPositions.set(node.id, {
-            x: node.coordinates.x,
-            y: node.coordinates.y,
-          });
-        });
-
-        let previousPositions = initialPositions;
-
-        const meanDistances: number[] = [];
-        for (let i = 0; i < stepCount; i++) {
-          simulationStep();
-
-          // Calculate mean node displacement
-          let totalDistance = 0;
-          graph.getAllNodes().forEach((node: Node) => {
-            const prevPos = previousPositions.get(node.id);
-            if (prevPos) {
-              const dx = node.coordinates.x - prevPos.x;
-              const dy = node.coordinates.y - prevPos.y;
-              totalDistance += Math.sqrt(dx * dx + dy * dy);
-            }
-          });
-          const meanDistance = totalDistance / graph.getAllNodes().length;
-          meanDistances.push(meanDistance);
-
-          // Update previous positions
-          const currentPositions = new Map<number, { x: number; y: number }>();
-          graph.getAllNodes().forEach((node: Node) => {
-            currentPositions.set(node.id, {
-              x: node.coordinates.x,
-              y: node.coordinates.y,
-            });
-          });
-          previousPositions = currentPositions;
-        }
-
-        // Compute adaptive durations inversely proportional to mean distances
-        const totalTargetTime = stepCount * stepDuration;
-        const totalMeanDistance = meanDistances.reduce((a, b) => a + b, 0);
-        stepDurations = meanDistances.map((dist) => {
-          return dist > 0
-            ? Math.min(totalTargetTime, (totalTargetTime / totalMeanDistance) * dist)
-            : stepDuration;
-        });
-
-        // Restore initial positions before actual recording
-        graph.getAllNodes().forEach((node: Node) => {
-          const saved = initialPositions.get(node.id);
-          if (saved) {
-            node.coordinates.x = saved.x;
-            node.coordinates.y = saved.y;
-          }
-        });
-      }
-
-      await this.withScaledCanvas(async () => {
-        // Reinitialize movie maker with scaled canvas
-        movieFacade.initialize();
-
-        // Create animation frames
-        const frames: any[] = [];
-        for (let i = 0; i < stepCount; i++) {
-          frames.push({
-            action: () => {
-              simulationStep();
-              app.render();
-            },
-            duration: stepDurations[i],
-          });
-        }
-
-        const sequence = {
-          name: `${simulationName} Simulation`,
-          frames,
-          defaultFrameDuration: stepDuration,
-        };
-
-        uiFacade.updateMovieStatus(
-          `Recording ${simulationName} simulation (${stepCount} steps${
-            adaptiveStepDuration ? " with adaptive duration" : ""
-          })...`
+      try {
+        await movieFacade.createSimulationMovie(
+          simulationType,
+          stepCount,
+          stepDuration,
+          adaptiveStepDuration
         );
-
-        try {
-          const movieMaker = movieFacade.getMovieMaker();
-          if (!movieMaker) {
-            throw new Error("Movie maker not initialized");
-          }
-          await movieMaker.recordMovie(
-            [sequence],
-            `${simulationType}-simulation.webm`
-          );
-          uiFacade.updateMovieStatus("Movie saved successfully!");
-          setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
-        } catch (error) {
-          console.error("Error creating movie:", error);
-          alert("Error creating movie: " + error);
-          uiFacade.updateMovieStatus("Error creating movie");
-        }
-      });
-    } finally {
-      // Restore node positions
-      graph.getAllNodes().forEach((node: Node) => {
-        const saved = savedPositions.get(node.id);
-        if (saved) {
-          node.coordinates.x = saved.x;
-          node.coordinates.y = saved.y;
-        }
-      });
-    }
+      } catch (error) {
+        alert(error);
+      }
+    }, settings.imageScaleFactor, app, graph, settings);
   }
 }

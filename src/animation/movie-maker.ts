@@ -53,6 +53,8 @@ export class MovieMaker {
     this.animator = new Animator({
       targetFPS: options.animatorOptions?.targetFPS || 60,
       autoPlay: false, // We'll control playback manually
+      offlineRendering: false, // Will be set to true when recording
+      onFrameRendered: () => this.recorder.requestFrame(),
     });
   }
 
@@ -65,6 +67,8 @@ export class MovieMaker {
     }
 
     this.isRecordingMovie = true;
+    // Enable offline rendering for accurate timing
+    (this.animator as any).options.offlineRendering = true;
     this.recorder.start();
   }
 
@@ -80,6 +84,9 @@ export class MovieMaker {
     if (this.animator.getIsPlaying()) {
       this.animator.stop();
     }
+
+    // Disable offline rendering
+    (this.animator as any).options.offlineRendering = false;
 
     // Stop recording and download
     await this.recorder.download(filename);

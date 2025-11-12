@@ -1,40 +1,7 @@
 import { Edge, graph, Node } from "../models";
 import { Point, Vector2d } from "../models";
 import { selection } from "./SelectionService";
-import { GlobalSettings } from "../utils/GlobalSettings";
-
-function PBC(distance: Vector2d, boxHalf: Vector2d): Vector2d {
-  // do PBC
-  while (distance.x > boxHalf.x) {
-    distance.x -= boxHalf.x * 2;
-  }
-  while (distance.x < -boxHalf.x) {
-    distance.x += boxHalf.x * 2;
-  }
-  while (distance.y > boxHalf.y) {
-    distance.y -= boxHalf.y * 2;
-  }
-  while (distance.y < -boxHalf.y) {
-    distance.y += boxHalf.y * 2;
-  }
-  return distance;
-}
-
-function moveIntoBox(point: Point, boxSize: Vector2d): Point {
-  while (point.x < 0) {
-    point.x += boxSize.x;
-  }
-  while (point.x > boxSize.x) {
-    point.x -= boxSize.x;
-  }
-  while (point.y < 0) {
-    point.y += boxSize.y;
-  }
-  while (point.y > boxSize.y) {
-    point.y -= boxSize.y;
-  }
-  return point;
-}
+import { applyPBC, moveIntoBox, getBoxSize, getBoxHalf } from "../utils";
 
 function computeForceBetween(node1: Node, node2: Node): Vector2d {
   const pos1 = new Vector2d(node1.coordinates.x, node1.coordinates.y);
@@ -45,11 +12,8 @@ function computeForceBetween(node1: Node, node2: Node): Vector2d {
 }
 
 export function doForceBalanceStep(): void {
-  const boxSize = new Vector2d(
-    GlobalSettings.instance.canvasSize.x,
-    GlobalSettings.instance.canvasSize.y
-  );
-  const boxHalf = boxSize.multiply(0.5);
+  const boxSize = getBoxSize();
+  const boxHalf = getBoxHalf();
   // console.log("Box size: " + boxSize.toString(), [boxHalf, boxSize]);
   // const allNodes = graph.getAllNodes();
   const allNodes = selection.getItemsOfClass(Node);
@@ -58,12 +22,12 @@ export function doForceBalanceStep(): void {
     let force: Vector2d = new Vector2d(0, 0);
     neighbours.forEach((neighbour) => {
       const distance = computeForceBetween(node, neighbour);
-      const correctedDistance = PBC(distance, boxHalf).multiply(
+      const correctedDistance = applyPBC(distance, boxHalf).multiply(
         1 / neighbours.length
       );
       force = force.add(correctedDistance);
     });
-    console.log(`Node ${node.id} has force: ${force.toString()}`);
+    // console.log(`Node ${node.id} has force: ${force.toString()}`);
     const targetCoords = moveIntoBox(
       new Vector2d(force.x + node.coordinates.x, force.y + node.coordinates.y),
       boxSize
@@ -77,10 +41,7 @@ export function doRandomWalk(startingPoint: Point): {
   nodes: Node[];
   edges: Edge[];
 } {
-  const boxSize = new Vector2d(
-    GlobalSettings.instance.canvasSize.x,
-    GlobalSettings.instance.canvasSize.y
-  );
+  const boxSize = getBoxSize();
 
   const stepSize: number = (
     document.getElementById("randomWalkStepSize") as HTMLInputElement
@@ -185,11 +146,7 @@ export function doPositionEquilibrationStep(): void {
 
   if (nodes.length < 1) return; // No need to equilibrate if there's only one or zero nodes
 
-  const boxSize = new Vector2d(
-    GlobalSettings.instance.canvasSize.x,
-    GlobalSettings.instance.canvasSize.y
-  );
-  const boxHalf = boxSize.multiply(0.5);
+  const boxHalf = getBoxHalf();
 
   // Repulsion factor - can be adjusted as needed
   const repulsionStrength = 25.0;
@@ -210,7 +167,7 @@ export function doPositionEquilibrationStep(): void {
       let distance = pos2.subtract(pos1);
 
       // Apply periodic boundary conditions
-      distance = PBC(distance, boxHalf);
+      distance = applyPBC(distance, boxHalf);
 
       // Calculate distance magnitude
       const distanceMagnitude = Math.sqrt(
@@ -228,7 +185,7 @@ export function doPositionEquilibrationStep(): void {
       }
     }
 
-    console.log(`Node ${node.id} experiences force: ${totalForce.toString()} and has radius ${node.radius}...`);
+    // console.log(`Node ${node.id} experiences force: ${totalForce.toString()} and has radius ${node.radius}...`);
 
     // Limit the maximum step size to the node's radius
     if (totalForce.x > node.radius) totalForce.x = node.radius;

@@ -107,6 +107,29 @@ export class UIFacade {
   }
 
   /**
+   * Update canvas size display and input fields
+   * Centralized method for updating all canvas-related UI elements
+   */
+  updateCanvasSizeUI(width: number, height: number): void {
+    // Update input fields
+    this.setValue("canvasWidth", width);
+    this.setValue("canvasHeight", height);
+
+    // Update canvas parent container
+    const canvasParent = document.getElementById("canvas-parent") as HTMLElement;
+    if (canvasParent) {
+      canvasParent.style.width = width + "px";
+      canvasParent.style.height = height + "px";
+    }
+
+    // Update canvas size display
+    const canvasSizeDisplay = document.getElementById("canvas-size");
+    if (canvasSizeDisplay) {
+      canvasSizeDisplay.textContent = `Canvas size: ${width}x${height}`;
+    }
+  }
+
+  /**
    * Update movie recording status
    */
   updateMovieRecordingStatus(message: string): void {

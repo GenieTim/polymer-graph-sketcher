@@ -123,4 +123,67 @@ export class CanvasFacade {
       clientY - this.canvas.offsetTop + window.scrollY
     );
   }
+
+  /**
+   * Execute a callback with scaled canvas for high-resolution rendering
+   * Automatically scales up before and restores after the callback
+   */
+  withScaledCanvas<T>(
+    callback: () => T | Promise<T>,
+    scaleFactor: number,
+    app: any,
+    graph: any,
+    settings: GlobalSettings
+  ): T | Promise<T> {
+    // Store original state
+    const originalShowSelection = app.showSelection.value;
+    const originalIsScaled = settings.isScaled;
+    const originalCanvasSize = {
+      x: settings.canvasSize.x,
+      y: settings.canvasSize.y,
+    };
+
+    // Scale up for high-resolution
+    app.showSelection.value = false;
+    settings.isScaled = true;
+    settings.canvasSize.x *= scaleFactor;
+    settings.canvasSize.y *= scaleFactor;
+
+    this.resizeWithGraphScaling(
+      settings.canvasSize.x,
+      settings.canvasSize.y,
+      true,
+      graph
+    );
+
+    const restore = () => {
+      app.showSelection.value = originalShowSelection;
+      settings.isScaled = originalIsScaled;
+      settings.canvasSize.x = originalCanvasSize.x;
+      settings.canvasSize.y = originalCanvasSize.y;
+
+      this.resizeWithGraphScaling(
+        settings.canvasSize.x,
+        settings.canvasSize.y,
+        true,
+        graph
+      );
+
+      app.render();
+    };
+
+    try {
+      const result = callback();
+      // Handle both sync and async callbacks
+      if (result instanceof Promise) {
+        return result.finally(restore) as T;
+      } else {
+        restore();
+        return result;
+      }
+    } catch (error) {
+      restore();
+      throw error;
+    }
+  }
 }

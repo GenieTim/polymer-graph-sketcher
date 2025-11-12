@@ -371,14 +371,14 @@
 
                 <div class="mb-2">
                   <label for="simulationStepCount" class="form-label small">Number of steps:</label>
-                  <input type="number" id="simulationStepCount" class="form-control form-control-sm" min="1" max="500"
-                    step="1" value="50">
+                  <input type="number" id="simulationStepCount" class="form-control form-control-sm" min="1" max="1000"
+                    step="1" value="500">
                 </div>
 
                 <div class="mb-2">
                   <label for="simulationStepDuration" class="form-label small">Duration per step (ms):</label>
-                  <input type="number" id="simulationStepDuration" class="form-control form-control-sm" min="50"
-                    max="2000" step="50" value="300">
+                  <input type="number" id="simulationStepDuration" class="form-control form-control-sm" min="10"
+                    max="2000" step="50" value="10">
                   <small class="text-muted">Time between simulation steps in the video</small>
                 </div>
 
@@ -408,6 +408,7 @@
 
       <div class="mt-2">
         <button type="button" class="btn btn-danger" id="clearCanvasButton">Clear canvas</button>
+        <button type="button" class="btn btn-warning" id="clearSavedStateButton">Clear saved state</button>
 
         <button type="button" class="btn btn-primary" id="saveImageButton">
           Save as image

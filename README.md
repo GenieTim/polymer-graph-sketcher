@@ -110,6 +110,17 @@ These settings affect both new as well as currently selected nodes/vertices.
 - Select vertices with stroke: Select nodes based on their outline color
 - Disable PBC: Toggle periodic boundary conditions
 
+### Auto-Save and State Persistence
+
+The application automatically saves your work to your browser's local storage:
+
+- **Automatic saving**: Your graph and settings are saved every 30 seconds
+- **Save on exit**: Your work is automatically saved when you close or reload the page
+- **Auto-restore**: When you return to the application, your previous work is automatically loaded
+- **Clear saved state**: Use the "Clear saved state" button to start fresh (this will not affect your current canvas)
+
+This feature ensures you never lose your work due to accidental page refreshes or browser closures.
+
 ### Export Options
 
 - Save as image: Export the graph as a PNG image

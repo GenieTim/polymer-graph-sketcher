@@ -5,3 +5,5 @@ export { CanvasRecorder } from "./recorder";
 export type { RecorderOptions } from "./recorder";
 export { MovieMaker, MoviePresets } from "./movie-maker";
 export type { MovieMakerOptions } from "./movie-maker";
+export { VideoEncoder } from "./video-encoder";
+export type { VideoEncoderOptions, RenderFunction } from "./video-encoder";

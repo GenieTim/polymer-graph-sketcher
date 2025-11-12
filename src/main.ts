@@ -12,6 +12,9 @@ import { CanvasFacade } from "./facades/CanvasFacade";
 import { UIFacade } from "./facades/UIFacade";
 import { MovieFacade } from "./facades/MovieFacade";
 
+// Service imports
+import { GraphOperationsService, FileService } from "./services";
+
 // Controller imports
 import { CanvasController } from "./controllers/CanvasController";
 import { UIController } from "./controllers/UIController";
@@ -27,6 +30,7 @@ import { graph, Node } from "./models";
 import { GlobalSettings } from "./utils/GlobalSettings";
 import { selection } from "./services/SelectionService";
 import { doRandomWalk, doForceBalanceStep, doPositionEquilibrationStep } from "./services/SimulationService";
+import { StorageService } from "./services/StorageService";
 import "./style.css";
 
 // Action imports for registration
@@ -45,7 +49,6 @@ import {
 function bootstrap(): void {
   // Get DOM elements
   const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-  const canvasParent = document.getElementById("canvas-parent") as HTMLElement;
   const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
   if (!canvas || !ctx) {
@@ -63,16 +66,21 @@ function bootstrap(): void {
   // Create and register services and facades
   const canvasFacade = new CanvasFacade(canvas, ctx, settings);
   const uiFacade = new UIFacade();
-  const movieFacade = new MovieFacade(canvas);
+  const movieFacade = new MovieFacade(canvas, container);
+  const graphOperations = new GraphOperationsService(container);
+  const fileService = new FileService(container);
 
   container.register("canvas", canvasFacade);
   container.register("ui", uiFacade);
   container.register("movie", movieFacade);
+  container.register("graphOperations", graphOperations);
+  container.register("fileService", fileService);
   container.register("settings", settings);
   container.register("graph", graph);
   container.register("selection", selection);
   container.register("Node", Node);
   container.register("nodeCounter", nodeCounter);
+  container.register("StorageService", StorageService);
 
   // Register drawable classes (for Application.render)
   container.register("Circle", Circle);
@@ -127,16 +135,41 @@ function bootstrap(): void {
   uiController.attachEventListeners();
   keyboardController.attachEventListeners();
 
-  // Set up initial UI state
-  canvasParent.style.width = settings.canvasSize.x + "px";
-  canvasParent.style.height = settings.canvasSize.y + "px";
-  uiFacade.setValue("canvasWidth", settings.canvasSize.x);
-  uiFacade.setValue("canvasHeight", settings.canvasSize.y);
+  // Load saved state from localStorage
+  const stateLoaded = StorageService.loadState(graph, settings);
+  
+  if (stateLoaded) {
+    // Update canvas and UI to match loaded settings
+    canvasFacade.resize(settings.canvasSize.x, settings.canvasSize.y);
+    uiFacade.updateCanvasSizeUI(settings.canvasSize.x, settings.canvasSize.y);
+    
+    // Update node counter based on loaded graph
+    if (graph.getNrOfNodes() > 0) {
+      const nodeIds = graph.getAllNodeIds();
+      nodeCounter.value = Math.max(...nodeIds) + 1;
+    }
+    
+    console.log("Loaded previous state from localStorage");
+  } else {
+    // Set up initial UI state for new session
+    uiFacade.updateCanvasSizeUI(settings.canvasSize.x, settings.canvasSize.y);
 
-  // Initial clear and render
-  graph.clear();
-  selection.clearSelection();
+    // Initial clear and render
+    graph.clear();
+    selection.clearSelection();
+  }
+  
   app.render();
+
+  // Save state to localStorage when page is about to unload
+  window.addEventListener("beforeunload", () => {
+    StorageService.saveState(graph, settings);
+  });
+  
+  // Also save state periodically (every 30 seconds) as a backup
+  setInterval(() => {
+    StorageService.saveState(graph, settings);
+  }, 30000);
 
   console.log("Application initialized successfully");
 }

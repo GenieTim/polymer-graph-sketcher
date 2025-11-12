@@ -40,8 +40,8 @@ export class CanvasRecorder {
     // Clear any previous recordings
     this.recordedChunks = [];
 
-    // Create a stream from the canvas
-    this.stream = this.canvas.captureStream(this.options.fps);
+    // Create a stream from the canvas - use 0 to capture on-demand
+    this.stream = this.canvas.captureStream(0);
 
     // Check if the preferred mime type is supported, fallback if needed
     let mimeType = this.options.mimeType!;
@@ -98,6 +98,18 @@ export class CanvasRecorder {
 
       this.mediaRecorder.stop();
     });
+  }
+
+  /**
+   * Request a frame to be captured (only works when using captureStream(0))
+   */
+  requestFrame(): void {
+    if (this.stream) {
+      const track = this.stream.getVideoTracks()[0];
+      if (track && 'requestFrame' in track) {
+        (track as any).requestFrame();
+      }
+    }
   }
 
   /**

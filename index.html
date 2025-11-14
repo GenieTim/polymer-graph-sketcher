@@ -32,7 +32,7 @@
     }
   </style>
 
-  <script type="module" crossorigin src="./assets/index-T0wD7svy.js"></script>
+  <script type="module" crossorigin src="./assets/index-Bv-9DIvg.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-DblMlOpV.css">
 </head>
 
@@ -395,6 +395,54 @@
 
                 <button type="button" class="btn btn-primary btn-sm w-100" id="createSimMovieBtn">
                   Create Simulation Movie
+                </button>
+              </div>
+            </div>
+
+            <!-- Stop-Motion Recording -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <strong>3. Stop-Motion Animation</strong>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small">Manually capture frames one at a time. Click to record a frame, make changes to the graph, then capture the next frame.</p>
+
+                <div class="mb-2">
+                  <span id="stopMotionIndicator" class="badge bg-secondary">Not recording</span>
+                </div>
+
+                <div class="btn-group mb-2 w-100" role="group">
+                  <button type="button" class="btn btn-success btn-sm" id="startStopMotionBtn">
+                    Start Recording
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm" id="stopStopMotionBtn" disabled>
+                    Stop Recording
+                  </button>
+                </div>
+
+                <div class="btn-group mb-2 w-100" role="group">
+                  <button type="button" class="btn btn-primary btn-sm" id="captureFrameBtn" disabled>
+                    📸 Capture <u>F</u>rame
+                  </button>
+                  <button type="button" class="btn btn-warning btn-sm" id="removeLastFrameBtn" disabled>
+                    ⏪ Remove Last
+                  </button>
+                </div>
+                <small class="text-muted d-block mb-2">Tip: Press <kbd>F</kbd> to quickly capture frames while recording</small>
+
+                <div class="mb-2">
+                  <label for="stopMotionFrameDuration" class="form-label small">Duration per frame (ms):</label>
+                  <input type="number" id="stopMotionFrameDuration" class="form-control form-control-sm" min="50"
+                    max="5000" step="50" value="500">
+                  <small class="text-muted">How long each captured frame displays in the final video</small>
+                </div>
+
+                <button type="button" class="btn btn-primary btn-sm w-100 mb-2" id="createStopMotionMovieBtn">
+                  Create Stop-Motion Movie
+                </button>
+
+                <button type="button" class="btn btn-outline-danger btn-sm w-100" id="clearStopMotionFramesBtn" disabled>
+                  Clear All Frames
                 </button>
               </div>
             </div>

@@ -290,68 +290,10 @@ export class MovieFacade {
               }
 
               // Render the frame with partial edges
-              // We need to build the elements array ourselves because app.render() 
-              // would overwrite our partial edges
-              const canvasFacade = this.container.get<any>("canvas");
-              const uiFacade = this.container.get<UIFacade>("ui");
-              
-              // Build elements array similar to app.render() but with our partial edges
-              const elements: any[] = [];
-              
-              // Background
-              const Rectangle = this.container.get<any>("Rectangle");
-              const canvas = canvasFacade.canvas;
-              const bgColor = uiFacade.getInputValue("backgroundColor");
-              const borderColor = uiFacade.getInputValue("borderColor");
-              const scalingFactor = settings.isScaled ? settings.imageScaleFactor : 1;
-              
-              elements.push(
-                new Rectangle(
-                  { x: 0, y: 0 },
-                  canvas.width,
-                  canvas.height,
-                  0,
-                  "transparent",
-                  bgColor
-                )
-              );
-              
-              // Graph elements
-              elements.push(...graph.toDrawables());
-              
-              // Add partial edges AFTER graph elements so they appear on top
-              animationPartialEdges.forEach((partial: any) => {
-                if (partial) {
-                  elements.push(partial);
-                }
-              });
-              
-              // Border to hide edges
-              elements.push(
-                new Rectangle(
-                  { x: 0, y: 0 },
-                  canvas.width,
-                  canvas.height,
-                  20.0 * scalingFactor,
-                  bgColor,
-                  null
-                )
-              );
-              
-              // Black border
-              elements.push(
-                new Rectangle(
-                  { x: 10 * scalingFactor, y: 10 * scalingFactor },
-                  canvas.width - 20 * scalingFactor,
-                  canvas.height - 20 * scalingFactor,
-                  4.0 * scalingFactor,
-                  borderColor,
-                  null
-                )
-              );
-              
-              // Draw directly to canvas
-              canvasFacade.draw(elements);
+              // Pass partial edges as extra elements to app.render()
+              // They will be drawn after edges but before nodes
+              const partialEdges = animationPartialEdges.filter((partial: any) => partial !== null);
+              app.render({ x: 1, y: 1 }, partialEdges);
             },
             duration: stepDuration,
           });

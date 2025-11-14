@@ -34,8 +34,11 @@ export class Application {
   /**
    * Trigger a complete re-render of the application
    * This is the central method that updates the visual state
+   * 
+   * @param scaling - Optional scaling factors for x and y axes
+   * @param extraElements - Optional additional drawable elements to insert after edges but before nodes
    */
-  render(scaling = { x: 1, y: 1 }): void {
+  render(scaling = { x: 1, y: 1 }, extraElements: Drawable[] = []): void {
     const canvasFacade = this.container.get<any>("canvas");
     const graph = this.container.get<any>("graph");
     const selection = this.container.get<any>("selection");
@@ -68,8 +71,41 @@ export class Application {
       )
     );
 
-    // Graph elements
-    elements.push(...graph.toDrawables());
+    // Graph elements (edges first, then nodes)
+    const graphDrawables = graph.toDrawables();
+    
+    // The graph.toDrawables() method already returns edges before nodes
+    // We need to insert extra elements (like partial edges) between them
+    if (extraElements.length > 0) {
+      // Split graph drawables into edges and nodes
+      // Edges are Line objects (or PartialLine which extends Line), nodes are Circle objects
+      const edges: Drawable[] = [];
+      const nodes: Drawable[] = [];
+      
+      for (const drawable of graphDrawables) {
+        // Check if it's a Circle (node) or Line (edge) based on constructor name
+        // We check the name because of how classes are loaded in the container
+        const constructorName = drawable.constructor.name;
+        if (constructorName === 'Circle') {
+          nodes.push(drawable);
+        } else {
+          // Line, PartialLine, or any other drawable
+          edges.push(drawable);
+        }
+      }
+      
+      // Add edges first
+      elements.push(...edges);
+      
+      // Add extra elements (like partial edges) after edges but before nodes
+      elements.push(...extraElements);
+      
+      // Add nodes on top
+      elements.push(...nodes);
+    } else {
+      // No extra elements, just add all graph drawables in order
+      elements.push(...graphDrawables);
+    }
 
     // Border to hide edges (thick border with background color)
     elements.push(

@@ -22,17 +22,25 @@ export class EdgeMode implements InteractionMode {
     
     if (newSelectedNode !== null) {
       if (!this.selection.empty) {
-        // Record edges if callback is provided
+        // Capture selected nodes BEFORE the action changes the selection
+        const selectedNodesBeforeAction = this.selection.getItemsOfClass(Node);
+        
+        // Add the edge action first
+        // AddEdgeAction creates edges FROM newSelectedNode TO each selected node
+        actionManager.addAction(
+          new AddEdgeAction(newSelectedNode, selectedNodesBeforeAction, this.uiFacade)
+        );
+        
+        // Record edges AFTER they've been created, using the captured selection
+        console.log("EdgeMode: recordingCallback exists:", !!this.recordingCallback);
         if (this.recordingCallback) {
-          const selectedNodes = this.selection.getItemsOfClass(Node);
-          selectedNodes.forEach((selectedNode: Node) => {
-            this.recordingCallback!(selectedNode, newSelectedNode);
+          console.log("EdgeMode: Recording edges for", selectedNodesBeforeAction.length, "selected nodes");
+          selectedNodesBeforeAction.forEach((selectedNode: Node) => {
+            // Pass nodes in correct order: FROM newSelectedNode TO selectedNode
+            console.log("EdgeMode: Calling recordingCallback for", newSelectedNode.id, "->", selectedNode.id);
+            this.recordingCallback!(newSelectedNode, selectedNode);
           });
         }
-        
-        actionManager.addAction(
-          new AddEdgeAction(newSelectedNode, this.selection.getItemsOfClass(Node), this.uiFacade)
-        );
       } else {
         actionManager.addAction(new SelectNodesAction([newSelectedNode]));
       }

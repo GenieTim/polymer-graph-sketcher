@@ -1,5 +1,6 @@
 import { MovieMaker } from "../animation/movie-maker";
 import { VideoEncoder } from "../animation/video-encoder";
+import { StopMotionRecorder } from "../animation/stop-motion-recorder";
 import { Node, Graph, Edge } from "../models";
 import { Container } from "../core/Container";
 import { Application } from "../core/Application";
@@ -13,6 +14,7 @@ import type { UIFacade } from "./UIFacade";
  */
 export class MovieFacade {
   private movieMaker: MovieMaker | null = null;
+  private stopMotionRecorder: StopMotionRecorder | null = null;
   private recordingEdges: Array<{
     type: "add" | "remove";
     fromNode: Node;
@@ -150,6 +152,10 @@ export class MovieFacade {
     const graph = this.container.get<Graph>("graph");
     const app = this.container.get<Application>("app");
     const uiFacade = this.container.get<UIFacade>("ui");
+    const settings = this.container.get<any>("settings");
+
+    // Check if canvas has been scaled for export
+    const scaleFactor = settings.isScaled ? settings.imageScaleFactor : 1;
 
     // Calculate initial state by tracking net changes
     const edgeNetChanges = new Map<string, any>();
@@ -210,34 +216,55 @@ export class MovieFacade {
         // Note: loop creates interpolationSteps+1 frames, so divide by that
         const stepDuration = edgeDuration / (interpolationSteps + 1);
 
+        // Get the current node positions (which are already scaled if in scaled mode)
+        // and the current edge weight (which should also be scaled)
+        const currentFromNode = graph.getNode(fromNode.id);
+        const currentToNode = graph.getNode(toNode.id);
+        
+        // Use current (scaled) node positions
+        const fromPos = currentFromNode ? currentFromNode.coordinates : fromNode.coordinates;
+        const toPos = currentToNode ? currentToNode.coordinates : toNode.coordinates;
+        
+        // The weight needs to be scaled if we're in scaled mode
+        const scaledWeight = weight * scaleFactor;
+
+        // Create PartialLine with zigZagged matching the graph's edge style
+        // Use the actual edge properties from the graph (which are already scaled)
         const partialLine = new PartialLine(
-          { x: fromNode.coordinates.x, y: fromNode.coordinates.y },
-          { x: toNode.coordinates.x, y: toNode.coordinates.y },
+          { x: fromPos.x, y: fromPos.y },
+          { x: toPos.x, y: toPos.y },
           type === "add" ? 0 : 1,
-          true,
+          true, // zigZagged - match the graph's edge rendering style
           color,
-          weight,
+          scaledWeight,
           graph.zigzagSpacing,
           graph.zigzagLength,
           graph.zigzagEndLengths
         );
 
         for (let i = 0; i <= interpolationSteps; i++) {
+          // Capture the current values in the closure
+          const currentStep = i;
+          // Progress from 0 to 1, but we'll start from a tiny value to ensure visibility
           const progress = i / interpolationSteps;
 
           frames.push({
             action: () => {
               if (type === "add") {
-                if (i === 0) {
+                if (currentStep < interpolationSteps) {
+                  // Animation in progress - update progress and keep in array
+                  // Start from 0.01 instead of 0 so the line is always visible
+                  const visibleProgress = Math.max(0.01, progress);
+                  partialLine.setProgress(visibleProgress);
                   animationPartialEdges[edgeIndex] = partialLine;
-                } else if (i < interpolationSteps) {
-                  partialLine.setProgress(progress);
                 } else {
+                  // Last frame - add the actual edge and remove partial
                   animationPartialEdges[edgeIndex] = null;
-                  graph.addEdge(fromNode.id, toNode.id, color, weight);
+                  graph.addEdge(fromNode.id, toNode.id, color, scaledWeight);
                 }
               } else {
-                if (i === 0) {
+                if (currentStep === 0) {
+                  // Start removal animation - remove actual edge and show full partial line
                   const edges = graph.getEdgesInvolvingNodes([
                     fromNode.id,
                     toNode.id,
@@ -251,21 +278,80 @@ export class MovieFacade {
                   if (edgeToRemove) {
                     graph.deleteEdge(edgeToRemove);
                   }
+                  partialLine.setProgress(1);
                   animationPartialEdges[edgeIndex] = partialLine;
-                } else if (i < interpolationSteps) {
+                } else if (currentStep < interpolationSteps) {
+                  // Middle of animation - shrink the line
                   partialLine.setProgress(1 - progress);
                 } else {
+                  // End of animation - remove partial line completely
                   animationPartialEdges[edgeIndex] = null;
                 }
               }
 
-              // Update elements to draw with partial edges
-              const elements = [...graph.toDrawables()];
+              // Render the frame with partial edges
+              // We need to build the elements array ourselves because app.render() 
+              // would overwrite our partial edges
+              const canvasFacade = this.container.get<any>("canvas");
+              const uiFacade = this.container.get<UIFacade>("ui");
+              
+              // Build elements array similar to app.render() but with our partial edges
+              const elements: any[] = [];
+              
+              // Background
+              const Rectangle = this.container.get<any>("Rectangle");
+              const canvas = canvasFacade.canvas;
+              const bgColor = uiFacade.getInputValue("backgroundColor");
+              const borderColor = uiFacade.getInputValue("borderColor");
+              const scalingFactor = settings.isScaled ? settings.imageScaleFactor : 1;
+              
+              elements.push(
+                new Rectangle(
+                  { x: 0, y: 0 },
+                  canvas.width,
+                  canvas.height,
+                  0,
+                  "transparent",
+                  bgColor
+                )
+              );
+              
+              // Graph elements
+              elements.push(...graph.toDrawables());
+              
+              // Add partial edges AFTER graph elements so they appear on top
               animationPartialEdges.forEach((partial: any) => {
-                if (partial) elements.push(partial);
+                if (partial) {
+                  elements.push(partial);
+                }
               });
-              app.elementsToDraw.value = elements;
-              app.render();
+              
+              // Border to hide edges
+              elements.push(
+                new Rectangle(
+                  { x: 0, y: 0 },
+                  canvas.width,
+                  canvas.height,
+                  20.0 * scalingFactor,
+                  bgColor,
+                  null
+                )
+              );
+              
+              // Black border
+              elements.push(
+                new Rectangle(
+                  { x: 10 * scalingFactor, y: 10 * scalingFactor },
+                  canvas.width - 20 * scalingFactor,
+                  canvas.height - 20 * scalingFactor,
+                  4.0 * scalingFactor,
+                  borderColor,
+                  null
+                )
+              );
+              
+              // Draw directly to canvas
+              canvasFacade.draw(elements);
             },
             duration: stepDuration,
           });
@@ -569,6 +655,131 @@ export class MovieFacade {
           node.coordinates.y = saved.y;
         }
       });
+    }
+  }
+
+  /**
+   * Initialize or get the stop-motion recorder
+   */
+  private getStopMotionRecorder(): StopMotionRecorder {
+    if (!this.stopMotionRecorder) {
+      this.stopMotionRecorder = new StopMotionRecorder({
+        canvas: this.canvas,
+        frameDuration: 500, // Default 500ms per frame
+      });
+    }
+    return this.stopMotionRecorder;
+  }
+
+  /**
+   * Start a stop-motion recording session
+   */
+  startStopMotionRecording(): void {
+    const recorder = this.getStopMotionRecorder();
+    recorder.start();
+    console.log("Stop-motion recording started");
+  }
+
+  /**
+   * Capture the current canvas state as a frame
+   */
+  captureStopMotionFrame(): number {
+    const recorder = this.getStopMotionRecorder();
+    recorder.captureFrame();
+    return recorder.getFrameCount();
+  }
+
+  /**
+   * Remove the last captured frame
+   */
+  removeLastStopMotionFrame(): number {
+    const recorder = this.getStopMotionRecorder();
+    recorder.removeLastFrame();
+    return recorder.getFrameCount();
+  }
+
+  /**
+   * Stop the stop-motion recording session
+   */
+  stopStopMotionRecording(): number {
+    const recorder = this.getStopMotionRecorder();
+    const frameCount = recorder.getFrameCount();
+    recorder.stop();
+    console.log(`Stop-motion recording stopped with ${frameCount} frames`);
+    return frameCount;
+  }
+
+  /**
+   * Get the number of captured stop-motion frames
+   */
+  getStopMotionFrameCount(): number {
+    const recorder = this.getStopMotionRecorder();
+    return recorder.getFrameCount();
+  }
+
+  /**
+   * Check if stop-motion recording is active
+   */
+  isStopMotionRecording(): boolean {
+    const recorder = this.getStopMotionRecorder();
+    return recorder.getIsRecording();
+  }
+
+  /**
+   * Set the frame duration for stop-motion playback
+   */
+  setStopMotionFrameDuration(durationMs: number): void {
+    const recorder = this.getStopMotionRecorder();
+    recorder.setFrameDuration(durationMs);
+  }
+
+  /**
+   * Get the current stop-motion frame duration
+   */
+  getStopMotionFrameDuration(): number {
+    const recorder = this.getStopMotionRecorder();
+    return recorder.getFrameDuration();
+  }
+
+  /**
+   * Clear all captured stop-motion frames
+   */
+  clearStopMotionFrames(): void {
+    const recorder = this.getStopMotionRecorder();
+    recorder.clear();
+  }
+
+  /**
+   * Create and download the stop-motion movie
+   */
+  async createStopMotionMovie(filename?: string): Promise<void> {
+    const recorder = this.getStopMotionRecorder();
+    const uiFacade = this.container.get<UIFacade>("ui");
+
+    const frameCount = recorder.getFrameCount();
+    if (frameCount === 0) {
+      throw new Error("No frames captured! Capture some frames first.");
+    }
+
+    uiFacade.updateMovieStatus(`Encoding stop-motion animation (${frameCount} frames)...`);
+
+    try {
+      const blob = await recorder.encode((current, total) => {
+        uiFacade.updateMovieStatus(
+          `Encoding: ${current}/${total} frames (${Math.round((current / total) * 100)}%)`
+        );
+      });
+
+      // Download the video
+      const finalFilename = filename || "stop-motion-animation.webm";
+      this.downloadBlob(blob, finalFilename);
+
+      uiFacade.updateMovieStatus("Stop-motion movie saved successfully!");
+      setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
+    } catch (error) {
+      console.error("Error creating stop-motion movie:", error);
+      uiFacade.updateMovieStatus("Error creating movie!");
+      throw error;
     }
   }
 }

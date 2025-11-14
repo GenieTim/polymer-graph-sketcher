@@ -62,9 +62,20 @@ export class VideoEncoder {
       throw new Error('Failed to get 2D context from canvas');
     }
 
-    // Create stream from canvas - use 0 for manual frame capture
-    const capturedStream = this.canvas.captureStream(0) as MediaStream;
+    // Check if requestFrame is supported
+    const testStream = this.canvas.captureStream(0);
+    const testTrack = testStream.getVideoTracks()[0] as any;
+    const supportsRequestFrame = testTrack && typeof testTrack.requestFrame === 'function';
+    testStream.getTracks().forEach(track => track.stop());
+
+    // Create stream from canvas
+    // Use manual frame capture (0) if supported, otherwise use the target FPS
+    const capturedStream = supportsRequestFrame 
+      ? this.canvas.captureStream(0) as MediaStream
+      : this.canvas.captureStream(this.options.fps) as MediaStream;
     this.stream = capturedStream;
+
+    console.log(`VideoEncoder: Using ${supportsRequestFrame ? 'manual' : 'automatic'} frame capture at ${this.options.fps} fps`);
 
     // Select supported mime type
     let mimeType = this.options.mimeType;
@@ -154,18 +165,17 @@ export class VideoEncoder {
         if (videoFramesNeeded >= 1) {
           // We have enough accumulated time to capture video frames
           
-          // Wait for the browser to actually render the canvas
-          await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
-          
-          // Request frame captures
           if (supportsRequestFrame) {
+            // Manual frame capture mode - request each frame explicitly
+            await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+            
             for (let i = 0; i < videoFramesNeeded; i++) {
               videoTrack.requestFrame();
-              // Small delay between frame requests for reliability
               await new Promise(resolve => setTimeout(resolve, 5));
             }
           } else {
-            // Fallback: wait for automatic capture (shouldn't happen with captureStream(0))
+            // Automatic capture mode - just wait for the stream to capture frames
+            // The stream will automatically capture at the specified FPS
             const waitTime = videoFramesNeeded * msPerFrame;
             await new Promise(resolve => setTimeout(resolve, waitTime));
           }

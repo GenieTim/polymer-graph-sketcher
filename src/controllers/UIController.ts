@@ -314,6 +314,26 @@ export class UIController {
       this.createSimulationMovie()
     );
 
+    // Stop-motion recording buttons
+    this.attachButtonClick("startStopMotionBtn", () =>
+      this.startStopMotionRecording()
+    );
+    this.attachButtonClick("captureFrameBtn", () =>
+      this.captureStopMotionFrame()
+    );
+    this.attachButtonClick("removeLastFrameBtn", () =>
+      this.removeLastStopMotionFrame()
+    );
+    this.attachButtonClick("stopStopMotionBtn", () =>
+      this.stopStopMotionRecording()
+    );
+    this.attachButtonClick("createStopMotionMovieBtn", () =>
+      this.createStopMotionMovie()
+    );
+    this.attachButtonClick("clearStopMotionFramesBtn", () =>
+      this.clearStopMotionFrames()
+    );
+
     // Graph manipulation buttons
     this.attachButtonClick("removeDuplicateEdges", () => {
       graphOps.removeDuplicateEdges();
@@ -530,6 +550,15 @@ export class UIController {
       movieFacade.initialize();
     }
 
+    // Switch to edge mode
+    modeFactory.setCurrentMode("edge");
+    
+    // Update the mode switch UI element to reflect the change
+    const modeSwitch = document.getElementById("mode-switch") as HTMLSelectElement;
+    if (modeSwitch) {
+      modeSwitch.value = "edge";
+    }
+
     movieFacade.startRecordingEdges();
 
     // Update UI
@@ -697,5 +726,148 @@ export class UIController {
         alert(error);
       }
     }, settings.imageScaleFactor, app, graph, settings);
+  }
+
+  /**
+   * Start stop-motion recording
+   */
+  private startStopMotionRecording(): void {
+    const movieFacade = this.container.get<MovieFacade>("movie");
+    const uiFacade = this.container.get<UIFacade>("ui");
+
+    movieFacade.startStopMotionRecording();
+
+    // Update UI
+    const startBtn = document.getElementById("startStopMotionBtn") as HTMLButtonElement;
+    const captureBtn = document.getElementById("captureFrameBtn") as HTMLButtonElement;
+    const removeBtn = document.getElementById("removeLastFrameBtn") as HTMLButtonElement;
+    const stopBtn = document.getElementById("stopStopMotionBtn") as HTMLButtonElement;
+    const clearBtn = document.getElementById("clearStopMotionFramesBtn") as HTMLButtonElement;
+
+    if (startBtn) startBtn.disabled = true;
+    if (captureBtn) captureBtn.disabled = false;
+    if (removeBtn) removeBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = false;
+    if (clearBtn) clearBtn.disabled = true;
+
+    uiFacade.updateStopMotionIndicator("Recording... (0 frames)", "red");
+    uiFacade.updateMovieStatus("Stop-motion recording started. Capture frames by clicking 'Capture Frame'.");
+  }
+
+  /**
+   * Capture a stop-motion frame
+   */
+  private captureStopMotionFrame(): void {
+    const movieFacade = this.container.get<MovieFacade>("movie");
+    const uiFacade = this.container.get<UIFacade>("ui");
+
+    if (!movieFacade.isStopMotionRecording()) {
+      alert("Not currently recording. Click 'Start Recording' first.");
+      return;
+    }
+
+    const frameCount = movieFacade.captureStopMotionFrame();
+    uiFacade.updateStopMotionIndicator(`Recording... (${frameCount} frames)`, "red");
+    uiFacade.updateMovieStatus(`Frame ${frameCount} captured!`);
+  }
+
+  /**
+   * Remove the last captured stop-motion frame
+   */
+  private removeLastStopMotionFrame(): void {
+    const movieFacade = this.container.get<MovieFacade>("movie");
+    const uiFacade = this.container.get<UIFacade>("ui");
+
+    const frameCount = movieFacade.removeLastStopMotionFrame();
+    
+    if (movieFacade.isStopMotionRecording()) {
+      uiFacade.updateStopMotionIndicator(`Recording... (${frameCount} frames)`, "red");
+    } else {
+      uiFacade.updateStopMotionIndicator(
+        frameCount > 0 ? `Ready (${frameCount} frames)` : "Not recording",
+        frameCount > 0 ? "green" : "black"
+      );
+    }
+    
+    uiFacade.updateMovieStatus(
+      frameCount > 0 ? `Last frame removed. ${frameCount} frames remaining.` : "All frames removed."
+    );
+  }
+
+  /**
+   * Stop stop-motion recording
+   */
+  private stopStopMotionRecording(): void {
+    const movieFacade = this.container.get<MovieFacade>("movie");
+    const uiFacade = this.container.get<UIFacade>("ui");
+
+    const frameCount = movieFacade.stopStopMotionRecording();
+
+    // Update UI
+    const startBtn = document.getElementById("startStopMotionBtn") as HTMLButtonElement;
+    const captureBtn = document.getElementById("captureFrameBtn") as HTMLButtonElement;
+    const removeBtn = document.getElementById("removeLastFrameBtn") as HTMLButtonElement;
+    const stopBtn = document.getElementById("stopStopMotionBtn") as HTMLButtonElement;
+    const clearBtn = document.getElementById("clearStopMotionFramesBtn") as HTMLButtonElement;
+
+    if (startBtn) startBtn.disabled = false;
+    if (captureBtn) captureBtn.disabled = true;
+    if (removeBtn) removeBtn.disabled = frameCount === 0;
+    if (stopBtn) stopBtn.disabled = true;
+    if (clearBtn) clearBtn.disabled = frameCount === 0;
+
+    uiFacade.updateStopMotionIndicator(
+      frameCount > 0 ? `Ready (${frameCount} frames)` : "Not recording",
+      frameCount > 0 ? "green" : "black"
+    );
+    uiFacade.updateMovieStatus(`Recording stopped. ${frameCount} frames captured.`);
+  }
+
+  /**
+   * Create and download stop-motion movie
+   */
+  private async createStopMotionMovie(): Promise<void> {
+    const movieFacade = this.container.get<MovieFacade>("movie");
+    const uiFacade = this.container.get<UIFacade>("ui");
+
+    const frameCount = movieFacade.getStopMotionFrameCount();
+    if (frameCount === 0) {
+      alert("No frames captured! Capture some frames first.");
+      return;
+    }
+
+    // Update frame duration from UI
+    const frameDuration = uiFacade.getInputValueAsNumber("stopMotionFrameDuration") || 500;
+    movieFacade.setStopMotionFrameDuration(frameDuration);
+
+    try {
+      await movieFacade.createStopMotionMovie();
+    } catch (error) {
+      alert(`Error creating movie: ${error}`);
+    }
+  }
+
+  /**
+   * Clear all stop-motion frames
+   */
+  private clearStopMotionFrames(): void {
+    const movieFacade = this.container.get<MovieFacade>("movie");
+    const uiFacade = this.container.get<UIFacade>("ui");
+
+    if (!confirm("Are you sure you want to clear all captured frames? This cannot be undone.")) {
+      return;
+    }
+
+    movieFacade.clearStopMotionFrames();
+
+    // Update UI
+    const removeBtn = document.getElementById("removeLastFrameBtn") as HTMLButtonElement;
+    const clearBtn = document.getElementById("clearStopMotionFramesBtn") as HTMLButtonElement;
+
+    if (removeBtn) removeBtn.disabled = true;
+    if (clearBtn) clearBtn.disabled = true;
+
+    uiFacade.updateStopMotionIndicator("Not recording", "black");
+    uiFacade.updateMovieStatus("All frames cleared.");
   }
 }

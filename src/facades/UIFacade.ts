@@ -34,7 +34,10 @@ export class UIFacade {
       "simulationStepDuration",
       "adaptiveStepDuration",
       "movieRecordingStatus",
-      "recordingEdgeCount"
+      "recordingEdgeCount",
+      "stopMotionFrameDuration",
+      "stopMotionIndicator",
+      "stopMotionFrameCount"
     ];
 
     elementIds.forEach(id => {
@@ -151,6 +154,27 @@ export class UIFacade {
    */
   updateRecordingEdgeCount(count: number): void {
     const element = this.getElement("recordingEdgeCount");
+    if (element) {
+      element.textContent = String(count);
+    }
+  }
+
+  /**
+   * Update stop-motion indicator
+   */
+  updateStopMotionIndicator(message: string, color: string = "black"): void {
+    const element = this.getElement("stopMotionIndicator");
+    if (element) {
+      element.textContent = message;
+      element.style.color = color;
+    }
+  }
+
+  /**
+   * Update stop-motion frame count display
+   */
+  updateStopMotionFrameCount(count: number): void {
+    const element = this.getElement("stopMotionFrameCount");
     if (element) {
       element.textContent = String(count);
     }

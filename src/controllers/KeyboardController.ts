@@ -30,6 +30,7 @@ export class KeyboardController {
     const DeleteNodesAction = this.container.get<any>("DeleteNodesAction");
     const selection = this.container.get<any>("selection");
     const Node = this.container.get<any>("Node");
+    const movieFacade = this.container.get<any>("movie");
 
     // Ctrl/Cmd shortcuts
     if (event.ctrlKey || event.metaKey) {
@@ -105,6 +106,14 @@ export class KeyboardController {
           modeFactory.setCurrentMode("random_walk");
           this.updateModeUI("random_walk");
           break;
+
+        // Stop-motion frame capture shortcut
+        case "f":
+          // Only capture if stop-motion recording is active
+          if (movieFacade && movieFacade.isStopMotionRecording()) {
+            this.captureStopMotionFrame();
+          }
+          break;
       }
     }
   }
@@ -117,6 +126,22 @@ export class KeyboardController {
     if (modeSwitch) {
       modeSwitch.value = mode;
     }
+  }
+
+  /**
+   * Capture a stop-motion frame (called by keyboard shortcut)
+   */
+  private captureStopMotionFrame(): void {
+    const movieFacade = this.container.get<any>("movie");
+    const uiFacade = this.container.get<any>("ui");
+
+    if (!movieFacade || !movieFacade.isStopMotionRecording()) {
+      return;
+    }
+
+    const frameCount = movieFacade.captureStopMotionFrame();
+    uiFacade.updateStopMotionIndicator(`Recording... (${frameCount} frames)`, "red");
+    uiFacade.updateMovieStatus(`Frame ${frameCount} captured!`);
   }
 
   /**

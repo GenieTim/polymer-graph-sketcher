@@ -132,6 +132,7 @@ svg { z-index: 99; position: fixed; border: 0px; top: 0px; right: 0; }
                 </ul>
               </li>
               <li><a href="#tools">Tools</a></li>
+              <li><a href="#auto-save-and-state-persistence">Auto-Save and State Persistence</a></li>
               <li><a href="#export-options">Export Options</a></li>
               <li><a href="#movie-recording">Movie Recording</a>
                 <ul>
@@ -265,23 +266,26 @@ svg { z-index: 99; position: fixed; border: 0px; top: 0px; right: 0; }
     <p>The Polymer Graph Sketcher supports the following keyboard shortcuts for quick access to various functions:</p>
     <h3 id="general-actions"><a class="anchor" aria-hidden="true" tabindex="-1" href="#general-actions"><span class="octicon octicon-link"></span></a>General Actions</h3>
     <ul>
-      <li><code>Ctrl/Cmd + S</code>: Save canvas as image and export graph</li>
-      <li><code>Ctrl/Cmd + Z</code>: Undo last action</li>
-      <li><code>Ctrl/Cmd + Shift + Z</code> or <code>Ctrl/Cmd + Y</code>: Redo last undone action</li>
-      <li><code>A</code>: Select all nodes</li>
-      <li><code>C</code> or <code>Escape</code>: Clear selection</li>
-      <li><code>I</code>: Invert selection</li>
+      <li><code>Ctrl/Cmd + s</code>: Save canvas as image and export graph</li>
+      <li><code>Ctrl/Cmd + z</code>: Undo last action</li>
+      <li><code>Ctrl/Cmd + Shift + z</code> or <code>Ctrl/Cmd + y</code>: Redo last undone action</li>
+      <li><code>a</code>: Select all nodes</li>
+      <li><code>c</code> or <code>Escape</code>: Clear selection</li>
+      <li><code>i</code>: Invert selection</li>
       <li><code>Backspace</code> or <code>Delete</code>: Delete selected nodes</li>
+      <li><code>f</code>: Take a snapshot/<ins>f</ins>rame (in stop motion movie recording mode)</li>
     </ul>
     <h3 id="interaction-modes"><a class="anchor" aria-hidden="true" tabindex="-1" href="#interaction-modes"><span class="octicon octicon-link"></span></a>Interaction Modes</h3>
     <ul>
-      <li><code>D</code>: Switch to "delete vertex" mode</li>
-      <li><code>R</code>: Switch to "random walk" mode</li>
-      <li><code>L</code>: Switch to "delete edge" mode</li>
-      <li><code>S</code>: Switch to "select vertex" mode</li>
-      <li><code>H</code>: Switch to "select chains" mode</li>
-      <li><code>V</code>: Switch to "add vertex" (add node) mode</li>
-      <li><code>E</code>: Switch to "add edge" mode</li>
+      <li><code>d</code>: Switch to "<ins>d</ins>elete vertex" mode</li>
+      <li><code>r</code>: Switch to "<ins>r</ins>andom walk" mode</li>
+      <li><code>l</code>: Switch to "de<ins>l</ins>ete edge" mode</li>
+      <li><code>s</code>: Switch to "<ins>s</ins>elect vertex" mode</li>
+      <li><code>h</code>: Switch to "select c<ins>h</ins>ains" mode</li>
+      <li><code>v</code>: Switch to "add <ins>v</ins>ertex" (add node) mode</li>
+      <li><code>e</code>: Switch to "add <ins>e</ins>dge" mode</li>
+      <li><code>A</code> (<code>Shift + a</code>): Switch to "add <ins>A</ins>rrow" mode</li>
+      <li><code>w</code>: Switch to "delete arro<ins>w</ins>" mode</li>
     </ul>
     <p>These shortcuts provide quick access to common actions and interaction modes, enhancing the efficiency of working with the Polymer Graph Sketcher.</p>
     <h2 id="development"><a class="anchor" aria-hidden="true" tabindex="-1" href="#development"><span class="octicon octicon-link"></span></a>Development</h2>

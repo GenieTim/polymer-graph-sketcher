@@ -2,6 +2,7 @@ import { GlobalSettings } from "../utils/GlobalSettings";
 import { Graph } from "../models/Graph";
 import { Node } from "../models/Node";
 import { Edge } from "../models/Edge";
+import { Arrow } from "../models/Arrow";
 
 /**
  * Captured state of the canvas and graph before scaling
@@ -20,6 +21,7 @@ interface ScalingState {
     strokeWidth: number;
   }>;
   edgeWeights: Map<string, number>; // key: "fromId-toId"
+  arrowWidths: Map<number, number>; // key: arrow id
   zigzagSpacing: number;
   zigzagLength: number;
   zigzagEndLengths: number;
@@ -119,6 +121,11 @@ export class ScalingService {
       edgeWeights.set(key, edge.weight);
     });
 
+    const arrowWidths = new Map<number, number>();
+    graph.getAllArrows().forEach((arrow: Arrow) => {
+      arrowWidths.set(arrow.id, arrow.width);
+    });
+
     this.savedState = {
       canvasWidth: this.canvas.width,
       canvasHeight: this.canvas.height,
@@ -127,6 +134,7 @@ export class ScalingService {
       isScaled: this.settings.isScaled,
       nodeStates,
       edgeWeights,
+      arrowWidths,
       zigzagSpacing: graph.zigzagSpacing,
       zigzagLength: graph.zigzagLength,
       zigzagEndLengths: graph.zigzagEndLengths,
@@ -187,6 +195,13 @@ export class ScalingService {
       }
     });
 
+    graph.getAllArrows().forEach((arrow: Arrow) => {
+      const savedWidth = state.arrowWidths.get(arrow.id);
+      if (savedWidth !== undefined) {
+        arrow.width = savedWidth;
+      }
+    });
+
     graph.zigzagSpacing = state.zigzagSpacing;
     graph.zigzagLength = state.zigzagLength;
     graph.zigzagEndLengths = state.zigzagEndLengths;
@@ -221,6 +236,11 @@ export class ScalingService {
     // Scale edges
     graph.getAllEdges().forEach((edge: Edge) => {
       edge.weight *= scaleFactor;
+    });
+
+    // Scale arrows
+    graph.getAllArrows().forEach((arrow: Arrow) => {
+      arrow.width *= scaleFactor;
     });
 
     // Scale zigzag properties
@@ -268,6 +288,10 @@ export class ScalingService {
     if (rescaleElements) {
       graph.getAllEdges().forEach((edge: Edge) => {
         edge.weight *= scaling1D;
+      });
+
+      graph.getAllArrows().forEach((arrow: Arrow) => {
+        arrow.width *= scaling1D;
       });
 
       graph.zigzagSpacing *= scaling1D;

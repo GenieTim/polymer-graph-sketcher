@@ -162,23 +162,23 @@ The Polymer Graph Sketcher supports the following keyboard shortcuts for quick a
 - `Ctrl/Cmd + s`: Save canvas as image and export graph
 - `Ctrl/Cmd + z`: Undo last action
 - `Ctrl/Cmd + Shift + z` or `Ctrl/Cmd + y`: Redo last undone action
-- `a`: Select all nodes
-- `c` or `Escape`: Clear selection
-- `i`: Invert selection
+- `a`: Select <u>a</u>ll nodes
+- `c` or `Escape`: <u>C</u>lear selection
+- `i`: <u>i</u>nvert selection
 - `Backspace` or `Delete`: Delete selected nodes
-- `f`: Take a snapshot/<ins>f</ins>rame (in stop motion movie recording mode)
+- `f`: Take a snapshot/<u>f</u>rame (in stop motion movie recording mode)
 
 ### Interaction Modes
 
-- `d`: Switch to "<ins>d</ins>elete vertex" mode
-- `r`: Switch to "<ins>r</ins>andom walk" mode
-- `l`: Switch to "de<ins>l</ins>ete edge" mode
-- `s`: Switch to "<ins>s</ins>elect vertex" mode
-- `h`: Switch to "select c<ins>h</ins>ains" mode
-- `v`: Switch to "add <ins>v</ins>ertex" (add node) mode
-- `e`: Switch to "add <ins>e</ins>dge" mode
-- `A` (`Shift + a`): Switch to "add <ins>A</ins>rrow" mode
-- `w`: Switch to "delete arro<ins>w</ins>" mode
+- `d`: Switch to "<u>d</u>elete vertex" mode
+- `r`: Switch to "<u>r</u>andom walk" mode
+- `l`: Switch to "de<u>l</u>ete edge" mode
+- `s`: Switch to "<u>s</u>elect vertex" mode
+- `h`: Switch to "select c<u>h</u>ains" mode
+- `v`: Switch to "add <u>v</u>ertex" (add node) mode
+- `e`: Switch to "add <u>e</u>dge" mode
+- `A` (`Shift + a`): Switch to "add <u>A</u>rrow" mode
+- `w`: Switch to "delete arro<u>w</u>" mode
 
 These shortcuts provide quick access to common actions and interaction modes, enhancing the efficiency of working with the Polymer Graph Sketcher.
 

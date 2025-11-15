@@ -9,6 +9,7 @@ import { Point, Graph } from '../models';
 import { interpolateWithPBC, getBoxSize } from '../utils/PeriodicBoundaryConditions';
 import { PartialLine } from '../rendering/PartialLine';
 import { ArrowLine } from '../rendering/ArrowLine';
+import { GlobalSettings } from '../utils/GlobalSettings';
 import type { GraphState } from './stop-motion-recorder';
 import type { Drawable } from '../rendering/Drawable';
 
@@ -164,7 +165,13 @@ export function createEdgeAnimationDrawables(
   progress: number
 ): Drawable[] {
   const drawables: Drawable[] = [];
-  const scaleFactor = 1; // Could get this from GlobalSettings if needed
+  // Get the current scaling factor from GlobalSettings when in scaled mode
+  // This matches how ScalingService works - when isScaled is true, use imageScaleFactor
+  const settings = GlobalSettings.instance;
+  const scalingFactor = settings.isScaled 
+    ? { x: settings.imageScaleFactor, y: settings.imageScaleFactor }
+    : { x: 1, y: 1 };
+  const scaleFactor = Math.max(scalingFactor.x, scalingFactor.y);
   
   // Appearing edges (growing from start to end)
   diff.addedEdges.forEach(edge => {
@@ -175,19 +182,25 @@ export function createEdgeAnimationDrawables(
       const fromPos = fromNode.coordinates;
       const toPos = toNode.coordinates;
       
+      // Scale coordinates (same as Graph.toDrawables())
+      const scaledFromX = fromPos.x * scalingFactor.x;
+      const scaledFromY = fromPos.y * scalingFactor.y;
+      const scaledToX = toPos.x * scalingFactor.x;
+      const scaledToY = toPos.y * scalingFactor.y;
+      
       // Start from 0.01 instead of 0 so the line is always visible
       const visibleProgress = Math.max(0.01, progress);
       
       const partialLine = new PartialLine(
-        { x: fromPos.x, y: fromPos.y },
-        { x: toPos.x, y: toPos.y },
+        { x: scaledFromX, y: scaledFromY },
+        { x: scaledToX, y: scaledToY },
         visibleProgress,
         true, // zigZagged
         edge.color,
         edge.weight * scaleFactor,
-        graph.zigzagSpacing,
-        graph.zigzagLength,
-        graph.zigzagEndLengths
+        graph.zigzagSpacing * scaleFactor,
+        graph.zigzagLength * scaleFactor,
+        graph.zigzagEndLengths * scaleFactor
       );
       
       drawables.push(partialLine);
@@ -205,19 +218,25 @@ export function createEdgeAnimationDrawables(
         const fromPos = fromNode.coordinates;
         const toPos = toNode.coordinates;
         
+        // Scale coordinates (same as Graph.toDrawables())
+        const scaledFromX = fromPos.x * scalingFactor.x;
+        const scaledFromY = fromPos.y * scalingFactor.y;
+        const scaledToX = toPos.x * scalingFactor.x;
+        const scaledToY = toPos.y * scalingFactor.y;
+        
         // Shrink from full to nothing
         const remainingProgress = 1 - progress;
         
         const partialLine = new PartialLine(
-          { x: fromPos.x, y: fromPos.y },
-          { x: toPos.x, y: toPos.y },
+          { x: scaledFromX, y: scaledFromY },
+          { x: scaledToX, y: scaledToY },
           remainingProgress,
           true, // zigZagged
           edge.color,
           edge.weight * scaleFactor,
-          graph.zigzagSpacing,
-          graph.zigzagLength,
-          graph.zigzagEndLengths
+          graph.zigzagSpacing * scaleFactor,
+          graph.zigzagLength * scaleFactor,
+          graph.zigzagEndLengths * scaleFactor
         );
         
         drawables.push(partialLine);
@@ -239,7 +258,13 @@ export function createArrowAnimationDrawables(
   progress: number
 ): Drawable[] {
   const drawables: Drawable[] = [];
-  const scaleFactor = 1;
+  // Get the current scaling factor from GlobalSettings when in scaled mode
+  // This matches how ScalingService works - when isScaled is true, use imageScaleFactor
+  const settings = GlobalSettings.instance;
+  const scalingFactor = settings.isScaled 
+    ? { x: settings.imageScaleFactor, y: settings.imageScaleFactor }
+    : { x: 1, y: 1 };
+  const scaleFactor = Math.max(scalingFactor.x, scalingFactor.y);
   
   // Appearing arrows (growing from start to end)
   diff.addedArrows.forEach(arrow => {
@@ -256,6 +281,12 @@ export function createArrowAnimationDrawables(
       const partialEndX = fromPos.x + dx * progress;
       const partialEndY = fromPos.y + dy * progress;
       
+      // Scale coordinates (same as Graph.toDrawables())
+      const scaledFromX = fromPos.x * scalingFactor.x;
+      const scaledFromY = fromPos.y * scalingFactor.y;
+      const scaledPartialEndX = partialEndX * scalingFactor.x;
+      const scaledPartialEndY = partialEndY * scalingFactor.y;
+      
       // Check if an edge exists between the same nodes for offset
       const hasEdge = graph.hasEdgeBetween(arrow.fromId, arrow.toId);
       const offset = hasEdge ? 8 * scaleFactor : 0;
@@ -264,8 +295,8 @@ export function createArrowAnimationDrawables(
       const showHeads = progress > 0.9;
       
       const arrowLine = new ArrowLine(
-        { x: fromPos.x, y: fromPos.y },
-        { x: partialEndX, y: partialEndY },
+        { x: scaledFromX, y: scaledFromY },
+        { x: scaledPartialEndX, y: scaledPartialEndY },
         arrow.color,
         arrow.width * scaleFactor,
         arrow.headAtStart && showHeads,
@@ -296,6 +327,12 @@ export function createArrowAnimationDrawables(
         const partialEndX = fromPos.x + dx * remainingProgress;
         const partialEndY = fromPos.y + dy * remainingProgress;
         
+        // Scale coordinates (same as Graph.toDrawables())
+        const scaledFromX = fromPos.x * scalingFactor.x;
+        const scaledFromY = fromPos.y * scalingFactor.y;
+        const scaledPartialEndX = partialEndX * scalingFactor.x;
+        const scaledPartialEndY = partialEndY * scalingFactor.y;
+        
         const hasEdge = graph.hasEdgeBetween(arrow.fromId, arrow.toId);
         const offset = hasEdge ? 8 * scaleFactor : 0;
         
@@ -303,8 +340,8 @@ export function createArrowAnimationDrawables(
         const showHeads = remainingProgress > 0.1;
         
         const arrowLine = new ArrowLine(
-          { x: fromPos.x, y: fromPos.y },
-          { x: partialEndX, y: partialEndY },
+          { x: scaledFromX, y: scaledFromY },
+          { x: scaledPartialEndX, y: scaledPartialEndY },
           arrow.color,
           arrow.width * scaleFactor,
           arrow.headAtStart && showHeads,

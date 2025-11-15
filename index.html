@@ -382,7 +382,7 @@
                   <label for="stopMotionFrameDuration" class="form-label small">Duration per frame (ms):</label>
                   <input type="number" id="stopMotionFrameDuration" class="form-control form-control-sm" min="50"
                     max="5000" step="50" value="500">
-                  <small class="text-muted">How long each captured frame displays (or interpolates to next frame). Can be changed between captures for variable timing.</small>
+                  <small class="text-muted">Duration for the transition TO the next captured frame. Set this <strong>before</strong> capturing to control how long the animation to that frame takes. Change between captures for variable timing (e.g., large changes → large duration, small changes → small duration).</small>
                 </div>
 
                 <div class="mb-2 form-check">

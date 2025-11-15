@@ -31,7 +31,7 @@ export interface StopMotionFrame {
   imageData: ImageData;
   graphState: GraphState;
   timestamp: number;
-  duration: number; // Duration in ms to display this frame (or interpolate to next frame)
+  duration: number; // Duration in ms for the transition TO this frame from the previous frame
 }
 
 export interface StopMotionRecorderOptions {
@@ -99,7 +99,14 @@ export class StopMotionRecorder {
   /**
    * Capture the current canvas state as a frame
    * Also captures the graph state if a provider is set
-   * @param customDuration Optional custom duration for this specific frame
+   * 
+   * @param customDuration Optional duration (in ms) for the transition TO this frame from the previous frame.
+   *                       This controls how long the animation/interpolation will take when transitioning
+   *                       TO this captured state. Set this BEFORE capturing to control the timing of the
+   *                       incoming transition. For example:
+   *                       - Large changes + large duration = smooth, slow animation
+   *                       - Small changes + small duration = quick, snappy animation
+   *                       This enables creating videos with approximately regular movement speed.
    */
   captureFrame(customDuration?: number): void {
     if (!this.isRecording) {
@@ -242,7 +249,9 @@ export class StopMotionRecorder {
       const endFrame = this.cels[i + 1];
 
       // Calculate how many intermediate frames we need based on the duration
-      const transitionDurationMs = startFrame.duration;
+      // Use endFrame.duration: this is the duration set BEFORE capturing the end frame,
+      // representing how long we want the transition TO this frame to take
+      const transitionDurationMs = endFrame.duration;
       const numIntermediateFrames = Math.max(1, Math.round(transitionDurationMs / frameDurationMs));
 
       // Calculate the diff once for this transition

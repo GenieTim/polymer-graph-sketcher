@@ -345,7 +345,7 @@ export class Graph {
         // Check if an edge exists between the same nodes
         const hasEdge = this.hasEdgeBetween(arrow.fromId, arrow.toId);
         // Apply offset if edge exists (offset of 8 pixels to the side)
-        const offset = hasEdge ? 8 * scalingFactor1D : 0;
+        const offset = hasEdge ? 10 * scalingFactor1D : 0;
 
         drawables.push(
           new ArrowLine(

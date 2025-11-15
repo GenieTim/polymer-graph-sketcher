@@ -1,5 +1,7 @@
 # Polymer Graph Sketcher
 
+[![Tests](https://github.com/GenieTim/polymer-graph-sketcher/actions/workflows/test.yml/badge.svg)](https://github.com/GenieTim/polymer-graph-sketcher/actions/workflows/test.yml)
+
 Create 2D sketches of Polymers: 
 With this software, you can sketch bead-spring networks in 2D.
 

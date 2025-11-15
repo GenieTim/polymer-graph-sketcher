@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/GenieTim/polymer-graph-sketcher/actions/workflows/test.yml/badge.svg)](https://github.com/GenieTim/polymer-graph-sketcher/actions/workflows/test.yml)
 
-Create 2D sketches of Polymers: 
+Create 2D sketches of Polymers:
 With this software, you can sketch bead-spring networks in 2D.
 
 Example:
@@ -23,6 +23,7 @@ Example:
       - [Random Walk Generator](#random-walk-generator)
       - [Side Chain Generator](#side-chain-generator)
     - [Tools](#tools)
+    - [Auto-Save and State Persistence](#auto-save-and-state-persistence)
     - [Export Options](#export-options)
     - [Movie Recording](#movie-recording)
       - [How to Use](#how-to-use)
@@ -158,23 +159,26 @@ The Polymer Graph Sketcher supports the following keyboard shortcuts for quick a
 
 ### General Actions
 
-- `Ctrl/Cmd + S`: Save canvas as image and export graph
-- `Ctrl/Cmd + Z`: Undo last action
-- `Ctrl/Cmd + Shift + Z` or `Ctrl/Cmd + Y`: Redo last undone action
-- `A`: Select all nodes
-- `C` or `Escape`: Clear selection
-- `I`: Invert selection
+- `Ctrl/Cmd + s`: Save canvas as image and export graph
+- `Ctrl/Cmd + z`: Undo last action
+- `Ctrl/Cmd + Shift + z` or `Ctrl/Cmd + y`: Redo last undone action
+- `a`: Select all nodes
+- `c` or `Escape`: Clear selection
+- `i`: Invert selection
 - `Backspace` or `Delete`: Delete selected nodes
+- `f`: Take a snapshot/<ins>f</ins>rame (in stop motion movie recording mode)
 
 ### Interaction Modes
 
-- `D`: Switch to "delete vertex" mode
-- `R`: Switch to "random walk" mode
-- `L`: Switch to "delete edge" mode
-- `S`: Switch to "select vertex" mode
-- `H`: Switch to "select chains" mode
-- `V`: Switch to "add vertex" (add node) mode
-- `E`: Switch to "add edge" mode
+- `d`: Switch to "<ins>d</ins>elete vertex" mode
+- `r`: Switch to "<ins>r</ins>andom walk" mode
+- `l`: Switch to "de<ins>l</ins>ete edge" mode
+- `s`: Switch to "<ins>s</ins>elect vertex" mode
+- `h`: Switch to "select c<ins>h</ins>ains" mode
+- `v`: Switch to "add <ins>v</ins>ertex" (add node) mode
+- `e`: Switch to "add <ins>e</ins>dge" mode
+- `A` (`Shift + a`): Switch to "add <ins>A</ins>rrow" mode
+- `w`: Switch to "delete arro<ins>w</ins>" mode
 
 These shortcuts provide quick access to common actions and interaction modes, enhancing the efficiency of working with the Polymer Graph Sketcher.
 

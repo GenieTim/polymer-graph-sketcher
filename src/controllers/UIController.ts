@@ -73,6 +73,7 @@ export class UIController {
     this.attachModeSwitch();
     this.attachNodePropertyListeners();
     this.attachEdgePropertyListeners();
+    this.attachArrowPropertyListeners();
     this.attachCanvasPropertyListeners();
     this.attachButtonListeners();
     this.attachRedrawListeners();
@@ -194,6 +195,50 @@ export class UIController {
   }
 
   /**
+   * Attach arrow property change listeners
+   */
+  private attachArrowPropertyListeners(): void {
+    const graph = this.container.get<Graph>("graph");
+    const selection = this.container.get<SelectionService>("selection");
+    const app = this.container.get<Application>("app");
+
+    // Helper to update arrow properties
+    const updateArrowProperty = (
+      propertyName: string,
+      getValue: (element: HTMLInputElement) => any
+    ) => {
+      return (element: HTMLInputElement) => {
+        const selectedNodeIds = selection
+          .getItemsOfClass(Node)
+          .map((node: Node) => node.id);
+        graph
+          .getArrowsWithBothEndsInNodes(selectedNodeIds)
+          .forEach((arrow: any) => {
+            arrow[propertyName] = getValue(element);
+          });
+        app.render();
+      };
+    };
+
+    this.attachInputChange(
+      "arrowColor",
+      updateArrowProperty("color", (el) => el.value)
+    );
+    this.attachInputChange(
+      "arrowWidth",
+      updateArrowProperty("width", (el) => parseFloat(el.value))
+    );
+    this.attachInputChange(
+      "arrowHeadAtStart",
+      updateArrowProperty("headAtStart", (el) => el.checked)
+    );
+    this.attachInputChange(
+      "arrowHeadAtEnd",
+      updateArrowProperty("headAtEnd", (el) => el.checked)
+    );
+  }
+
+  /**
    * Attach canvas property change listeners
    */
   private attachCanvasPropertyListeners(): void {
@@ -299,20 +344,6 @@ export class UIController {
     this.attachButtonClick("saveImageButton", () => this.saveCanvasAsImage());
     this.attachButtonClick("saveSvgButton", () => fileService.saveGraphAsSvg());
     this.attachInputChange("import", () => this.importGraph());
-
-    // Movie recording buttons
-    this.attachButtonClick("startRecordingEdgesBtn", () =>
-      this.startEdgeRecording()
-    );
-    this.attachButtonClick("stopRecordingEdgesBtn", () =>
-      this.stopEdgeRecording()
-    );
-    this.attachButtonClick("createEdgeMovieBtn", () =>
-      this.createEdgeAdditionMovie()
-    );
-    this.attachButtonClick("createSimMovieBtn", () =>
-      this.createSimulationMovie()
-    );
 
     // Stop-motion recording buttons
     this.attachButtonClick("startStopMotionBtn", () =>
@@ -534,200 +565,6 @@ export class UIController {
     });
   }
 
-
-
-  /**
-   * Start recording edge additions
-   */
-  private startEdgeRecording(): void {
-    const movieFacade = this.container.get<MovieFacade>("movie");
-    const modeFactory =
-      this.container.get<InteractionModeFactory>("modeFactory");
-    const uiFacade = this.container.get<UIFacade>("ui");
-
-    // Initialize movie maker if needed
-    if (!movieFacade.getMovieMaker()) {
-      movieFacade.initialize();
-    }
-
-    // Switch to edge mode
-    modeFactory.setCurrentMode("edge");
-    
-    // Update the mode switch UI element to reflect the change
-    const modeSwitch = document.getElementById("mode-switch") as HTMLSelectElement;
-    if (modeSwitch) {
-      modeSwitch.value = "edge";
-    }
-
-    movieFacade.startRecordingEdges();
-
-    // Update UI
-    const startBtn = document.getElementById(
-      "startRecordingEdgesBtn"
-    ) as HTMLButtonElement;
-    const stopBtn = document.getElementById(
-      "stopRecordingEdgesBtn"
-    ) as HTMLButtonElement;
-    const indicator = document.getElementById("recordingIndicator");
-
-    if (startBtn) startBtn.disabled = true;
-    if (stopBtn) stopBtn.disabled = false;
-    if (indicator) {
-      indicator.textContent = "Recording... (0 edges)";
-      indicator.style.color = "red";
-    }
-
-    // Set up recording callback in edge mode
-    const graph = this.container.get<Graph>("graph");
-    const edgeMode = modeFactory.getMode("edge");
-    if (edgeMode && (edgeMode as any).setRecordingCallback) {
-      (edgeMode as any).setRecordingCallback((fromNode: Node, toNode: Node) => {
-        const edges = graph.getEdgesInvolvingNodes([fromNode.id, toNode.id]);
-        const existingEdge = edges.find(
-          (edge: Edge) =>
-            (edge.fromId === fromNode.id && edge.toId === toNode.id) ||
-            (edge.fromId === toNode.id && edge.toId === fromNode.id)
-        );
-
-        if (existingEdge) {
-          movieFacade.recordEdgeAction(
-            "add",
-            fromNode,
-            toNode,
-            existingEdge.color,
-            existingEdge.weight
-          );
-
-          // Update indicator
-          if (indicator) {
-            const count = movieFacade.getRecordedEdges().length;
-            indicator.textContent = `Recording... (${count} edges)`;
-          }
-        }
-      });
-    }
-
-    uiFacade.updateMovieStatus("Recording edge additions...");
-  }
-
-  /**
-   * Stop recording edge additions
-   */
-  private stopEdgeRecording(): void {
-    const movieFacade = this.container.get<MovieFacade>("movie");
-    const modeFactory =
-      this.container.get<InteractionModeFactory>("modeFactory");
-    const uiFacade = this.container.get<UIFacade>("ui");
-
-    const count = movieFacade.stopRecordingEdges();
-
-    // Update UI
-    const startBtn = document.getElementById(
-      "startRecordingEdgesBtn"
-    ) as HTMLButtonElement;
-    const stopBtn = document.getElementById(
-      "stopRecordingEdgesBtn"
-    ) as HTMLButtonElement;
-    const indicator = document.getElementById("recordingIndicator");
-
-    if (startBtn) startBtn.disabled = false;
-    if (stopBtn) stopBtn.disabled = true;
-    if (indicator) {
-      indicator.textContent =
-        count > 0 ? `Ready (${count} edges recorded)` : "Not recording";
-      indicator.style.color = count > 0 ? "green" : "black";
-    }
-
-    // Clear recording callback from edge mode
-    const edgeMode = modeFactory.getMode("edge");
-    if (edgeMode && (edgeMode as any).setRecordingCallback) {
-      (edgeMode as any).setRecordingCallback(undefined);
-    }
-
-    uiFacade.updateMovieStatus(`Recording stopped. ${count} edges recorded.`);
-  }
-
-  /**
-   * Create and download movie of recorded edge additions
-   */
-  private async createEdgeAdditionMovie(): Promise<void> {
-    const movieFacade = this.container.get<MovieFacade>("movie");
-    const canvasFacade = this.container.get<CanvasFacade>("canvas");
-    const settings = this.container.get<GlobalSettings>("settings");
-    const app = this.container.get<Application>("app");
-    const graph = this.container.get<Graph>("graph");
-    const uiFacade = this.container.get<UIFacade>("ui");
-
-    const recordedEdges = movieFacade.getRecordedEdges();
-    if (recordedEdges.length === 0) {
-      alert("No edges recorded! Use 'Start Recording Edges' first.");
-      return;
-    }
-
-    // Initialize movie maker if needed
-    if (!movieFacade.getMovieMaker()) {
-      movieFacade.initialize();
-    }
-
-    const edgeDuration =
-      uiFacade.getInputValueAsNumber("edgeAnimationDuration") || 1000;
-    const interpolationSteps = 30;
-
-    await canvasFacade.withScaledCanvas(async () => {
-      // Reinitialize movie maker with scaled canvas
-      movieFacade.initialize();
-
-      try {
-        await movieFacade.createEdgeAdditionMovie(edgeDuration, interpolationSteps);
-      } catch (error) {
-        alert(error);
-      }
-    }, settings.imageScaleFactor, app, graph, settings);
-  }
-
-  /**
-   * Create and download movie of simulation steps
-   */
-  private async createSimulationMovie(): Promise<void> {
-    const movieFacade = this.container.get<MovieFacade>("movie");
-    const canvasFacade = this.container.get<CanvasFacade>("canvas");
-    const settings = this.container.get<GlobalSettings>("settings");
-    const app = this.container.get<Application>("app");
-    const graph = this.container.get<Graph>("graph");
-    const uiFacade = this.container.get<UIFacade>("ui");
-
-    // Initialize movie maker if needed
-    if (!movieFacade.getMovieMaker()) {
-      movieFacade.initialize();
-    }
-
-    const simulationType =
-      uiFacade.getInputValue("simulationType") || "force_balance";
-    const stepCount =
-      uiFacade.getInputValueAsNumber("simulationStepCount") || 10;
-    const stepDuration =
-      uiFacade.getInputValueAsNumber("simulationStepDuration") || 300;
-    const adaptiveStepDuration = uiFacade.getInputChecked(
-      "adaptiveStepDuration"
-    );
-
-    await canvasFacade.withScaledCanvas(async () => {
-      // Reinitialize movie maker with scaled canvas
-      movieFacade.initialize();
-
-      try {
-        await movieFacade.createSimulationMovie(
-          simulationType,
-          stepCount,
-          stepDuration,
-          adaptiveStepDuration
-        );
-      } catch (error) {
-        alert(error);
-      }
-    }, settings.imageScaleFactor, app, graph, settings);
-  }
-
   /**
    * Start stop-motion recording
    */
@@ -766,9 +603,12 @@ export class UIController {
       return;
     }
 
-    const frameCount = movieFacade.captureStopMotionFrame();
+    // Get the current frame duration setting
+    const duration = uiFacade.getInputValueAsNumber("stopMotionFrameDuration") || 500;
+
+    const frameCount = movieFacade.captureStopMotionFrame(duration);
     uiFacade.updateStopMotionIndicator(`Recording... (${frameCount} frames)`, "red");
-    uiFacade.updateMovieStatus(`Frame ${frameCount} captured!`);
+    uiFacade.updateMovieStatus(`Frame ${frameCount} captured (duration: ${duration}ms)!`);
   }
 
   /**
@@ -836,12 +676,9 @@ export class UIController {
       return;
     }
 
-    // Update frame duration from UI
-    const frameDuration = uiFacade.getInputValueAsNumber("stopMotionFrameDuration") || 500;
-    movieFacade.setStopMotionFrameDuration(frameDuration);
-
+ 
     try {
-      await movieFacade.createStopMotionMovie();
+      await movieFacade.createStopMotionMovie(uiFacade.getInputChecked("stopMotionInterpolate"));
     } catch (error) {
       alert(`Error creating movie: ${error}`);
     }

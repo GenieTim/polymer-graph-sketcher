@@ -42,7 +42,7 @@ if (typeof HTMLCanvasElement !== 'undefined') {
         fillText: vi.fn(),
         strokeText: vi.fn(),
         measureText: vi.fn(() => ({ width: 0 })),
-        getImageData: vi.fn((x: number, y: number, w: number, h: number) => ({
+        getImageData: vi.fn((_x: number, _y: number, w: number, h: number) => ({
           width: w,
           height: h,
           data: new Uint8ClampedArray(w * h * 4),
@@ -61,7 +61,7 @@ if (typeof HTMLCanvasElement !== 'undefined') {
   };
 
   // Mock captureStream for video recording tests
-  HTMLCanvasElement.prototype.captureStream = vi.fn((frameRate?: number) => {
+  HTMLCanvasElement.prototype.captureStream = vi.fn((_frameRate?: number) => {
     const mockStream = {
       id: 'mock-stream',
       active: true,
@@ -104,7 +104,7 @@ global.MediaRecorder = class MediaRecorder {
   state: 'inactive' | 'recording' | 'paused' = 'inactive';
   stream: MediaStream;
   
-  constructor(stream: MediaStream, options?: any) {
+  constructor(stream: MediaStream, _options?: any) {
     this.stream = stream;
   }
   

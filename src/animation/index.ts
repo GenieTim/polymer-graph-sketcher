@@ -8,4 +8,5 @@ export type { MovieMakerOptions } from "./movie-maker";
 export { VideoEncoder } from "./video-encoder";
 export type { VideoEncoderOptions, RenderFunction } from "./video-encoder";
 export { StopMotionRecorder } from "./stop-motion-recorder";
-export type { StopMotionRecorderOptions, StopMotionFrame } from "./stop-motion-recorder";
+export type { StopMotionRecorderOptions, StopMotionFrame, GraphState } from "./stop-motion-recorder";
+export * from "./interpolation";

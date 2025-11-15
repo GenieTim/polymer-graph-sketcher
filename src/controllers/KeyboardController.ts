@@ -58,6 +58,17 @@ export class KeyboardController {
       return; // Don't process other Ctrl/Cmd shortcuts
     }
 
+    // Shift key shortcuts (without Ctrl/Cmd/Alt)
+    if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      switch (event.key) {
+        case "A":
+          modeFactory.setCurrentMode("arrow");
+          this.updateModeUI("arrow");
+          break;
+      }
+      return; // Don't process other Shift shortcuts
+    }
+
     // Plain key shortcuts (without modifiers)
     if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
       switch (event.key) {
@@ -97,6 +108,10 @@ export class KeyboardController {
         case "l":
           modeFactory.setCurrentMode("delete_edge");
           this.updateModeUI("delete_edge");
+          break;
+        case "w":
+          modeFactory.setCurrentMode("delete_arrow");
+          this.updateModeUI("delete_arrow");
           break;
         case "h":
           modeFactory.setCurrentMode("select_chains");

@@ -107,12 +107,21 @@ export class CanvasController {
    * Handle mouse move events (for dragging)
    */
   private handleMouseMove(event: MouseEvent): void {
+    const modeFactory = this.container.get<any>("modeFactory");
+    const currentMode = modeFactory.getCurrentMode();
+    const app = this.container.get<any>("app");
+
+    // Let the mode handle mouse move and check if it needs a render
+    if (currentMode && currentMode.onMouseMove) {
+      const needsRender = currentMode.onMouseMove(event);
+      if (needsRender) {
+        app.render();
+      }
+    }
+
     if (!this.dragStart) {
       return;
     }
-
-    const modeFactory = this.container.get<any>("modeFactory");
-    const currentMode = modeFactory.getCurrentMode();
 
     // If we're dragging a node, handle it regardless of mode
     if (this.isDraggingNode) {
@@ -121,7 +130,6 @@ export class CanvasController {
 
       const selection = this.container.get<any>("selection");
       const settings = GlobalSettings.instance;
-      const app = this.container.get<any>("app");
 
       selection.getItemsOfClass(Node).forEach((node: Node) => {
         node.coordinates.x += dx;
@@ -144,12 +152,6 @@ export class CanvasController {
 
       this.dragStart = { x: event.clientX, y: event.clientY };
       app.render();
-      return;
-    }
-
-    // Otherwise, let the mode handle it
-    if (currentMode && currentMode.onMouseMove) {
-      currentMode.onMouseMove(event);
       return;
     }
   }

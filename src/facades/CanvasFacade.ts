@@ -1,6 +1,7 @@
 import { Drawable } from "../rendering";
 import { GlobalSettings } from "../utils/GlobalSettings";
 import { Point } from "../models";
+import { ScalingService } from "../services/ScalingService";
 
 /**
  * Facade for canvas operations
@@ -9,14 +10,16 @@ import { Point } from "../models";
 export class CanvasFacade {
   public canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private scalingService: ScalingService;
 
   constructor(
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
-    _settings: GlobalSettings
+    settings: GlobalSettings
   ) {
     this.canvas = canvas;
     this.ctx = ctx;
+    this.scalingService = new ScalingService(canvas, settings);
   }
 
   /**
@@ -37,6 +40,7 @@ export class CanvasFacade {
 
   /**
    * Resize canvas and scale graph elements accordingly
+   * Delegates to ScalingService for consistency
    */
   resizeWithGraphScaling(
     width: number, 
@@ -44,35 +48,7 @@ export class CanvasFacade {
     rescaleElements: boolean,
     graph: any
   ): { xScaling: number; yScaling: number } {
-    const scalingFactors = this.resize(width, height);
-    const { xScaling, yScaling } = scalingFactors;
-    const scaling1D = Math.min(xScaling, yScaling);
-
-    console.log("Resizing canvas", [rescaleElements, xScaling, yScaling, scaling1D]);
-
-    // Reposition elements to maintain their position relative to the canvas
-    const allNodes = graph.getAllNodes();
-    allNodes.forEach((node: any) => {
-      node.coordinates.x *= xScaling;
-      node.coordinates.y *= yScaling;
-      if (rescaleElements) {
-        node.radius *= scaling1D;
-        node.strokeWidth *= scaling1D;
-      }
-    });
-
-    if (rescaleElements) {
-      const allEdges = graph.getAllEdges();
-      allEdges.forEach((edge: any) => {
-        edge.weight *= scaling1D;
-      });
-
-      graph.zigzagLength *= scaling1D;
-      graph.zigzagSpacing *= scaling1D;
-      graph.zigzagEndLengths *= scaling1D;
-    }
-
-    return scalingFactors;
+    return this.scalingService.resizeCanvas(width, height, rescaleElements, graph);
   }
 
   /**
@@ -127,63 +103,66 @@ export class CanvasFacade {
   /**
    * Execute a callback with scaled canvas for high-resolution rendering
    * Automatically scales up before and restores after the callback
+   * 
+   * This is a high-level convenience method that delegates to ScalingService
+   * and handles rendering coordination.
+   * 
+   * Note: This method is intentionally synchronous to maintain backward compatibility.
+   * For async operations, the callback can return a Promise which will be handled correctly.
    */
   withScaledCanvas<T>(
     callback: () => T | Promise<T>,
     scaleFactor: number,
     app: any,
     graph: any,
-    settings: GlobalSettings
+    _settings: GlobalSettings
   ): T | Promise<T> {
-    // Store original state
-    const originalShowSelection = app.showSelection.value;
-    const originalIsScaled = settings.isScaled;
-    const originalCanvasSize = {
-      x: settings.canvasSize.x,
-      y: settings.canvasSize.y,
-    };
+    // Disable interactive rendering (selection circles, temporary elements)
+    const originalRenderMode = app.renderModeInteractive.value;
+    app.renderModeInteractive.value = false;
 
-    // Scale up for high-resolution
-    app.showSelection.value = false;
-    settings.isScaled = true;
-    settings.canvasSize.x *= scaleFactor;
-    settings.canvasSize.y *= scaleFactor;
-
-    this.resizeWithGraphScaling(
-      settings.canvasSize.x,
-      settings.canvasSize.y,
-      true,
-      graph
-    );
-
-    const restore = () => {
-      app.showSelection.value = originalShowSelection;
-      settings.isScaled = originalIsScaled;
-      settings.canvasSize.x = originalCanvasSize.x;
-      settings.canvasSize.y = originalCanvasSize.y;
-
-      this.resizeWithGraphScaling(
-        settings.canvasSize.x,
-        settings.canvasSize.y,
-        true,
-        graph
-      );
-
-      app.render();
-    };
+    // Scale for export
+    this.scalingService.scaleForExport(scaleFactor, graph);
 
     try {
+      // Execute callback
       const result = callback();
-      // Handle both sync and async callbacks
+      
+      // If callback returns a Promise, handle async restoration
       if (result instanceof Promise) {
-        return result.finally(restore) as T;
+        return result.then((value) => {
+          // Restore from scaling
+          this.scalingService.restoreFromScaling(graph);
+          app.renderModeInteractive.value = originalRenderMode;
+          app.render();
+          return value;
+        }).catch((error) => {
+          // Ensure we restore even on error
+          this.scalingService.restoreFromScaling(graph);
+          app.renderModeInteractive.value = originalRenderMode;
+          app.render();
+          throw error;
+        }) as Promise<T>;
       } else {
-        restore();
+        // Synchronous path - restore immediately
+        this.scalingService.restoreFromScaling(graph);
+        app.renderModeInteractive.value = originalRenderMode;
+        app.render();
         return result;
       }
     } catch (error) {
-      restore();
+      // Synchronous error - restore and rethrow
+      this.scalingService.restoreFromScaling(graph);
+      app.renderModeInteractive.value = originalRenderMode;
+      app.render();
       throw error;
     }
+  }
+
+  /**
+   * Get the ScalingService instance for direct access to scaling operations
+   */
+  getScalingService(): ScalingService {
+    return this.scalingService;
   }
 }

@@ -150,14 +150,14 @@ describe('Stop-Motion Movie - Frame Count and Duration', () => {
     movieFacade.stopStopMotionRecording();
     
     // Act: Create first movie
-    const movie1Promise = movieFacade.createStopMotionMovie('movie1.webm');
+    const movie1Promise = movieFacade.createStopMotionMovie(false, 'movie1.webm');
     await expect(movie1Promise).resolves.not.toThrow();
     
     // Assert: Frames should still be available
     expect(movieFacade.getStopMotionFrameCount()).toBe(3);
     
     // Act: Create second movie with different filename
-    const movie2Promise = movieFacade.createStopMotionMovie('movie2.webm');
+    const movie2Promise = movieFacade.createStopMotionMovie(false, 'movie2.webm');
     await expect(movie2Promise).resolves.not.toThrow();
     
     // Assert: Frames should still be available
@@ -225,29 +225,27 @@ describe('Stop-Motion Movie - Frame Count and Duration', () => {
 
   it('should support variable frame durations for different recording sessions', async () => {
     // Test 1: Short duration
-    movieFacade.setStopMotionFrameDuration(200);
     movieFacade.startStopMotionRecording();
-    movieFacade.captureStopMotionFrame();
-    movieFacade.captureStopMotionFrame();
+    movieFacade.captureStopMotionFrame(200);
+    movieFacade.captureStopMotionFrame(200);
     movieFacade.stopStopMotionRecording();
     
     await expect(
-      movieFacade.createStopMotionMovie('short-duration.webm')
+      movieFacade.createStopMotionMovie(false, 'short-duration.webm')
     ).resolves.not.toThrow();
     
     // Clear and test 2: Long duration
     movieFacade.clearStopMotionFrames();
-    movieFacade.setStopMotionFrameDuration(2000);
     movieFacade.startStopMotionRecording();
-    movieFacade.captureStopMotionFrame();
-    movieFacade.captureStopMotionFrame();
+    movieFacade.captureStopMotionFrame(2000);
+    movieFacade.captureStopMotionFrame(2000);
     movieFacade.stopStopMotionRecording();
     
     await expect(
-      movieFacade.createStopMotionMovie('long-duration.webm')
+      movieFacade.createStopMotionMovie(false, 'long-duration.webm')
     ).resolves.not.toThrow();
     
     // Assert: Both movies created successfully with different durations
-    expect(movieFacade.getStopMotionFrameDuration()).toBe(2000);
+    expect(movieFacade.getStopMotionFrameCount()).toBe(2);
   });
 });

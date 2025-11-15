@@ -1,10 +1,12 @@
 import { InteractionMode } from "./InteractionMode";
 import { VertexMode } from "./VertexMode";
 import { EdgeMode } from "./EdgeMode";
+import { ArrowMode } from "./ArrowMode";
 import { SelectMode } from "./SelectMode";
 import { SelectChainsMode } from "./SelectChainsMode";
 import { DeleteVertexMode } from "./DeleteVertexMode";
 import { DeleteEdgeMode } from "./DeleteEdgeMode";
+import { DeleteArrowMode } from "./DeleteArrowMode";
 import { RandomWalkMode } from "./RandomWalkMode";
 import { Point } from "../models";
 import { Container } from "../core/Container";
@@ -29,11 +31,13 @@ export class InteractionModeFactory {
     
     // Register all available modes
     this.modes.set("vertex", new VertexMode(nodeCounter, uiFacade));
-    this.modes.set("edge", new EdgeMode(graph, selection, uiFacade));
+    this.modes.set("edge", new EdgeMode(graph, selection, uiFacade, container));
+    this.modes.set("arrow", new ArrowMode(graph, selection, uiFacade, container));
     this.modes.set("select", new SelectMode(graph, selection, container));
     this.modes.set("select_chains", new SelectChainsMode(graph));
     this.modes.set("delete_vertex", new DeleteVertexMode(graph));
     this.modes.set("delete_edge", new DeleteEdgeMode(graph, selection));
+    this.modes.set("delete_arrow", new DeleteArrowMode(graph, selection));
     this.modes.set("random_walk", new RandomWalkMode(nodeCounter, doRandomWalk, uiFacade));
 
     // Initial mode

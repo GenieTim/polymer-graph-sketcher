@@ -60,8 +60,10 @@
             <option value="select"><u>S</u>elect vertices</option>
             <option value="select_chains">Select c<u>h</u>ains</option>
             <option value="edge">Add <u>e</u>dge</option>
+            <option value="arrow">Add <u>A</u>rrow</option>
             <option value="delete_vertex"><u>D</u>elete vertex</option>
             <option value="delete_edge">De<u>l</u>ete edge</option>
+            <option value="delete_arrow">Delete arro<u>w</u></option>
           </select>
         </div>
         <div class="col align-right text-end">
@@ -101,6 +103,34 @@
 
             <label for="lineWidth" class="form-label">Line width:</label>
             <input type="number" id="lineWidth" class="form-control" min="1" value="2">
+          </div>
+        </div>
+        <!--  -->
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+              data-bs-target="#arrowSettingsCollapse" aria-expanded="false" aria-controls="arrowSettingsCollapse">
+              Arrow Settings
+            </button>
+          </h2>
+        </div>
+        <div id="arrowSettingsCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+          <div class="accordion-body">
+            <label for="arrowColor" class="form-label">Arrow color:</label>
+            <input type="color" id="arrowColor" class="form-control form-control-color" value="#FF0000">
+
+            <label for="arrowWidth" class="form-label">Arrow width:</label>
+            <input type="number" id="arrowWidth" class="form-control" min="1" value="2">
+
+            <div class="form-check">
+              <input type="checkbox" id="arrowHeadAtStart" class="form-check-input">
+              <label for="arrowHeadAtStart" class="form-check-label">Arrow head at start</label>
+            </div>
+
+            <div class="form-check">
+              <input type="checkbox" id="arrowHeadAtEnd" class="form-check-input" checked>
+              <label for="arrowHeadAtEnd" class="form-check-label">Arrow head at end</label>
+            </div>
           </div>
         </div>
         <!--  -->
@@ -314,93 +344,13 @@
         <div id="movieRecordingCollapse" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
           <div class="accordion-body">
             <div class="alert alert-info" role="alert">
-              <strong>Create animated movies</strong> of edge additions and simulation steps, then export as video
-              files.
-            </div>
-
-            <!-- Edge Addition Recording -->
-            <div class="card mb-3">
-              <div class="card-header">
-                <strong>1. Edge Animation</strong>
-              </div>
-              <div class="card-body">
-                <p class="text-muted small">Record edges as you add or remove them, then create an animated movie
-                  showing the changes smoothly.</p>
-
-                <div class="mb-2">
-                  <span id="recordingIndicator" class="badge bg-secondary">Not recording</span>
-                </div>
-
-                <div class="btn-group mb-2" role="group">
-                  <button type="button" class="btn btn-success btn-sm" id="startRecordingEdgesBtn">
-                    Start Recording Edges
-                  </button>
-                  <button type="button" class="btn btn-danger btn-sm" id="stopRecordingEdgesBtn" disabled>
-                    Stop Recording
-                  </button>
-                </div>
-
-                <div class="mb-2">
-                  <label for="edgeAnimationDuration" class="form-label small">Duration per edge (ms):</label>
-                  <input type="number" id="edgeAnimationDuration" class="form-control form-control-sm" min="100"
-                    max="5000" step="100" value="500">
-                  <small class="text-muted">How long each edge takes to appear in the animation</small>
-                </div>
-
-                <button type="button" class="btn btn-primary btn-sm w-100" id="createEdgeMovieBtn">
-                  Create Edge Animation Movie
-                </button>
-              </div>
-            </div>
-
-            <!-- Simulation Recording -->
-            <div class="card mb-3">
-              <div class="card-header">
-                <strong>2. Simulation Animation</strong>
-              </div>
-              <div class="card-body">
-                <p class="text-muted small">Record simulation steps at a controlled speed for smooth playback.</p>
-
-                <div class="mb-2">
-                  <label for="simulationType" class="form-label small">Simulation type:</label>
-                  <select id="simulationType" class="form-select form-select-sm">
-                    <option value="force_balance">Force Balance</option>
-                    <option value="position_equilibration">Position Equilibration</option>
-                  </select>
-                </div>
-
-                <div class="mb-2">
-                  <label for="simulationStepCount" class="form-label small">Number of steps:</label>
-                  <input type="number" id="simulationStepCount" class="form-control form-control-sm" min="1" max="1000"
-                    step="1" value="500">
-                </div>
-
-                <div class="mb-2">
-                  <label for="simulationStepDuration" class="form-label small">Duration per step (ms):</label>
-                  <input type="number" id="simulationStepDuration" class="form-control form-control-sm" min="10"
-                    max="2000" step="50" value="10">
-                  <small class="text-muted">Time between simulation steps in the video</small>
-                </div>
-
-                <div class="mb-2 form-check">
-                  <input type="checkbox" id="adaptiveStepDuration" class="form-check-input">
-                  <label for="adaptiveStepDuration" class="form-check-label small">
-                    Adaptive step duration
-                  </label>
-                  <small class="text-muted d-block">When enabled, duration per step is treated as average. Steps with
-                    larger movements will be slower to make them easier to see.</small>
-                </div>
-
-                <button type="button" class="btn btn-primary btn-sm w-100" id="createSimMovieBtn">
-                  Create Simulation Movie
-                </button>
-              </div>
+              <strong>Create animated movies</strong> by capturing frames manually, then export as video with smooth interpolation between captures.
             </div>
 
             <!-- Stop-Motion Recording -->
             <div class="card mb-3">
               <div class="card-header">
-                <strong>3. Stop-Motion Animation</strong>
+                <strong>Stop-Motion Animation</strong>
               </div>
               <div class="card-body">
                 <p class="text-muted small">Manually capture frames one at a time. Click to record a frame, make changes to the graph, then capture the next frame.</p>
@@ -432,7 +382,15 @@
                   <label for="stopMotionFrameDuration" class="form-label small">Duration per frame (ms):</label>
                   <input type="number" id="stopMotionFrameDuration" class="form-control form-control-sm" min="50"
                     max="5000" step="50" value="500">
-                  <small class="text-muted">How long each captured frame displays in the final video</small>
+                  <small class="text-muted">How long each captured frame displays (or interpolates to next frame). Can be changed between captures for variable timing.</small>
+                </div>
+
+                <div class="mb-2 form-check">
+                  <input type="checkbox" id="stopMotionInterpolate" class="form-check-input" checked>
+                  <label for="stopMotionInterpolate" class="form-check-label small">
+                    Interpolate between frames
+                  </label>
+                  <small class="text-muted d-block">When enabled, smoothly animates nodes, edges, and arrows between captures. When disabled, displays each capture as a static frame.</small>
                 </div>
 
                 <button type="button" class="btn btn-primary btn-sm w-100 mb-2" id="createStopMotionMovieBtn">

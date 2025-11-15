@@ -1,6 +1,8 @@
 import { ActionManager } from "../actions";
 import { Point } from "../models";
 
+import { Drawable } from "../rendering";
+
 /**
  * Interface for interaction modes using the Strategy pattern
  * Each mode implements how the canvas responds to user interactions
@@ -25,8 +27,9 @@ export interface InteractionMode {
   /**
    * Optional: Handle mouse move events
    * @param event - The mouse event
+   * @returns true if render is needed, false otherwise
    */
-  onMouseMove?(event: MouseEvent): void;
+  onMouseMove?(event: MouseEvent): boolean;
 
   /**
    * Optional: Handle mouse up events
@@ -43,4 +46,11 @@ export interface InteractionMode {
    * Optional: Called when leaving this mode
    */
   onExit?(): void;
+
+  /**
+   * Optional: Get temporary drawable elements for this mode
+   * These are visual elements that should be rendered in normal view but not during exports
+   * @returns Array of drawable elements
+   */
+  getTemporaryDrawables?(): Drawable[];
 }

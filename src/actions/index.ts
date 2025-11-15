@@ -20,3 +20,8 @@ export { InvertSelectionAction } from "./InvertSelectionAction";
 export { AddEdgesAction } from "./AddEdgesAction";
 export { AddEdgeAction } from "./AddEdgeAction";
 export { DeleteEdgesAction } from "./DeleteEdgesAction";
+
+// Arrow actions
+export { AddArrowAction } from "./AddArrowAction";
+export { DeleteArrowsAction } from "./DeleteArrowsAction";
+export { ArrowPropertyUpdateAction } from "./ArrowPropertyUpdateAction";

@@ -1,9 +1,11 @@
 import { Point } from "./Point";
 import { Node } from "./Node";
 import { Edge } from "./Edge";
+import { Arrow } from "./Arrow";
 import { Drawable } from "../rendering/Drawable";
 import { Circle } from "../rendering/Circle";
 import { Line } from "../rendering/Line";
+import { ArrowLine } from "../rendering/ArrowLine";
 
 /**
  * A class representing a graph with nodes and edges.
@@ -11,6 +13,7 @@ import { Line } from "../rendering/Line";
 export class Graph {
   private nodes: { [key: string]: Node };
   private edges: Edge[];
+  private arrows: Arrow[];
   private scalingFactor: Point;
   public zigzagSpacing: number = 4;
   public zigzagLength: number = 3;
@@ -20,12 +23,14 @@ export class Graph {
   constructor() {
     this.nodes = {};
     this.edges = [];
+    this.arrows = [];
     this.scalingFactor = new Point(1, 1);
   }
 
   clear(): void {
     this.nodes = {};
     this.edges = [];
+    this.arrows = [];
   }
 
   setNode(node: Node): void {
@@ -78,6 +83,78 @@ export class Graph {
     return this.edges;
   }
 
+  getAllArrows(): Arrow[] {
+    return this.arrows;
+  }
+
+  getNrOfArrows(): number {
+    return this.arrows.length;
+  }
+
+  addArrow(
+    fromId: number,
+    toId: number,
+    color: string = "#000",
+    width: number = 2,
+    headAtStart: boolean = false,
+    headAtEnd: boolean = true
+  ): number {
+    if (!(fromId in this.nodes) || !(toId in this.nodes)) {
+      throw new Error("One or both nodes do not exist in the graph.");
+    }
+
+    this.arrows.push(
+      new Arrow(fromId, toId, this.arrows.length, color, width, headAtStart, headAtEnd)
+    );
+    return this.arrows.length - 1;
+  }
+
+  getArrowsInvolvingNode(id: number): Arrow[] {
+    return this.arrows.filter((arrow) => arrow.fromId === id || arrow.toId === id);
+  }
+
+  getArrowsInvolvingNodes(ids: number[]): Arrow[] {
+    return this.arrows.filter(
+      (arrow) => ids.includes(arrow.fromId) && ids.includes(arrow.toId)
+    );
+  }
+
+  getArrowsWithBothEndsInNodes(nodeIds: number[]): Arrow[] {
+    return this.arrows.filter(
+      (arrow) => nodeIds.includes(arrow.fromId) && nodeIds.includes(arrow.toId)
+    );
+  }
+
+  deleteArrow(arrowId: number | Arrow): Arrow {
+    if (arrowId instanceof Arrow) {
+      arrowId = this.arrows.indexOf(arrowId);
+    }
+    if (arrowId < 0 || arrowId >= this.arrows.length) {
+      throw new Error(
+        "Invalid arrow ID " +
+          arrowId +
+          ". Arrow ID must be between 0 and " +
+          (this.arrows.length - 1) +
+          "."
+      );
+    }
+
+    const arrow = this.arrows[arrowId];
+    this.arrows.splice(arrowId, 1);
+    return arrow;
+  }
+
+  /**
+   * Check if an edge exists between two nodes
+   */
+  hasEdgeBetween(fromId: number, toId: number): boolean {
+    return this.edges.some(
+      (edge) =>
+        (edge.fromId === fromId && edge.toId === toId) ||
+        (edge.fromId === toId && edge.toId === fromId)
+    );
+  }
+
   getNodesConnectedToNode(id: number): Node[] {
     return this.getEdgesInvolvingNode(id).map(
       (edge) => this.nodes[edge.fromId === id ? edge.toId : edge.fromId]
@@ -125,6 +202,7 @@ export class Graph {
 
   cleanupEdges(): void {
     this.edges = this.edges.filter((edge) => edge.fromId !== edge.toId);
+    this.arrows = this.arrows.filter((arrow) => arrow.fromId !== arrow.toId);
   }
 
   removeDuplicateEdges(): void {
@@ -151,6 +229,7 @@ export class Graph {
   fromJSON(json: any): void {
     this.nodes = {};
     this.edges = [];
+    this.arrows = [];
 
     for (const [, node] of Object.entries(json.nodes)) {
       this.setNode(
@@ -167,6 +246,19 @@ export class Graph {
 
     for (const edge of json.edges) {
       this.addEdge(edge.fromId, edge.toId, edge.color, edge.weight);
+    }
+
+    if (json.arrows) {
+      for (const arrow of json.arrows) {
+        this.addArrow(
+          arrow.fromId,
+          arrow.toId,
+          arrow.color,
+          arrow.width,
+          arrow.headAtStart,
+          arrow.headAtEnd
+        );
+      }
     }
 
     if ("scalingFactor" in json) {
@@ -232,6 +324,45 @@ export class Graph {
       } else {
         throw new Error(
           `Node with id ${edge.fromId} or ${edge.toId} does not exist in the graph.`
+        );
+      }
+    }
+
+    // then the arrows (after edges but before nodes)
+    for (const arrow of this.arrows) {
+      const fromNode = this.getNode(arrow.fromId);
+      const toNode = this.getNode(arrow.toId);
+      if (fromNode && toNode) {
+        const scaledCoordinatesFrom = new Point(
+          fromNode.coordinates.x * this.scalingFactor.x,
+          fromNode.coordinates.y * this.scalingFactor.y
+        );
+        const scaledCoordinatesTo = new Point(
+          toNode.coordinates.x * this.scalingFactor.x,
+          toNode.coordinates.y * this.scalingFactor.y
+        );
+
+        // Check if an edge exists between the same nodes
+        const hasEdge = this.hasEdgeBetween(arrow.fromId, arrow.toId);
+        // Apply offset if edge exists (offset of 8 pixels to the side)
+        const offset = hasEdge ? 8 * scalingFactor1D : 0;
+
+        drawables.push(
+          new ArrowLine(
+            scaledCoordinatesFrom,
+            scaledCoordinatesTo,
+            arrow.color,
+            arrow.width * scalingFactor1D,
+            arrow.headAtStart,
+            arrow.headAtEnd,
+            offset,
+            fromNode.radius * scalingFactor1D,
+            toNode.radius * scalingFactor1D
+          )
+        );
+      } else {
+        throw new Error(
+          `Node with id ${arrow.fromId} or ${arrow.toId} does not exist in the graph.`
         );
       }
     }
@@ -302,6 +433,13 @@ export class Graph {
     for (let i = 0; i < this.edges.length; i++) {
       if (this.edges[i].fromId === id || this.edges[i].toId === id) {
         this.edges.splice(i, 1);
+        i--;
+      }
+    }
+
+    for (let i = 0; i < this.arrows.length; i++) {
+      if (this.arrows[i].fromId === id || this.arrows[i].toId === id) {
+        this.arrows.splice(i, 1);
         i--;
       }
     }

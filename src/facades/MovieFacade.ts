@@ -1,12 +1,13 @@
 import { MovieMaker } from "../animation/movie-maker";
 import { VideoEncoder } from "../animation/video-encoder";
 import { StopMotionRecorder } from "../animation/stop-motion-recorder";
-import { Node, Graph, Edge } from "../models";
+import { Node, Graph, Edge, Arrow } from "../models";
 import { Container } from "../core/Container";
 import { Application } from "../core/Application";
 import { PartialLine } from "../rendering/PartialLine";
-import { interpolateWithPBC, getBoxSize } from "../utils";
+import { interpolateWithPBC, getBoxSize, GlobalSettings } from "../utils";
 import type { UIFacade } from "./UIFacade";
+import { CanvasFacade } from "./CanvasFacade";
 
 /**
  * Facade for movie recording operations
@@ -220,11 +221,15 @@ export class MovieFacade {
         // and the current edge weight (which should also be scaled)
         const currentFromNode = graph.getNode(fromNode.id);
         const currentToNode = graph.getNode(toNode.id);
-        
+
         // Use current (scaled) node positions
-        const fromPos = currentFromNode ? currentFromNode.coordinates : fromNode.coordinates;
-        const toPos = currentToNode ? currentToNode.coordinates : toNode.coordinates;
-        
+        const fromPos = currentFromNode
+          ? currentFromNode.coordinates
+          : fromNode.coordinates;
+        const toPos = currentToNode
+          ? currentToNode.coordinates
+          : toNode.coordinates;
+
         // The weight needs to be scaled if we're in scaled mode
         const scaledWeight = weight * scaleFactor;
 
@@ -292,7 +297,9 @@ export class MovieFacade {
               // Render the frame with partial edges
               // Pass partial edges as extra elements to app.render()
               // They will be drawn after edges but before nodes
-              const partialEdges = animationPartialEdges.filter((partial: any) => partial !== null);
+              const partialEdges = animationPartialEdges.filter(
+                (partial: any) => partial !== null
+              );
               app.render({ x: 1, y: 1 }, partialEdges);
             },
             duration: stepDuration,
@@ -301,40 +308,27 @@ export class MovieFacade {
       }
     );
 
-    const addCount = this.recordingEdges.filter((e: any) => e.type === "add").length;
-    const removeCount = this.recordingEdges.filter((e: any) => e.type === "remove").length;
+    const addCount = this.recordingEdges.filter(
+      (e: any) => e.type === "add"
+    ).length;
+    const removeCount = this.recordingEdges.filter(
+      (e: any) => e.type === "remove"
+    ).length;
     uiFacade.updateMovieStatus(
       `Encoding edge animation (${addCount} additions, ${removeCount} removals)...`
     );
 
     try {
-      // Use VideoEncoder for precise timing
-      const encoder = new VideoEncoder({
-        width: this.canvas.width,
-        height: this.canvas.height,
-        fps: 60,
-        videoBitsPerSecond: 5000000,
-      });
-
-      const videoFrames = frames.map((frame) => ({
-        render: (ctx: CanvasRenderingContext2D) => {
-          // Execute the action which updates the graph and renders to main canvas
-          frame.action();
-          // Copy the main canvas to the encoder's canvas
-          ctx.drawImage(this.canvas, 0, 0);
-        },
-        durationMs: frame.duration,
-      }));
-
-      const blob = await encoder.encodeVideo(videoFrames, (current, total) => {
+      const blob = await this.encodeVideoFrames(frames, (current, total) => {
         uiFacade.updateMovieStatus(
-          `Encoding: ${current}/${total} frames (${Math.round((current / total) * 100)}%)`
+          `Encoding: ${current}/${total} frames (${Math.round(
+            (current / total) * 100
+          )}%)`
         );
       });
 
-      // Download the video
       this.downloadBlob(blob, "edge-animation.webm");
-      
+
       uiFacade.updateMovieStatus("Movie saved successfully!");
       setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
     } catch (error) {
@@ -354,9 +348,39 @@ export class MovieFacade {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
-      document.body.removeChild(a);
+      if (a.parentNode) {
+        a.parentNode.removeChild(a);
+      }
       URL.revokeObjectURL(url);
     }, 500);
+  }
+
+  /**
+   * Helper method to encode video frames using VideoEncoder
+   * Reduces code duplication across different movie creation methods
+   */
+  private async encodeVideoFrames(
+    frames: Array<{ action: () => void; duration: number }>,
+    onProgress?: (current: number, total: number) => void
+  ): Promise<Blob> {
+    const encoder = new VideoEncoder({
+      width: this.canvas.width,
+      height: this.canvas.height,
+      fps: 60,
+      videoBitsPerSecond: 5000000,
+    });
+
+    const videoFrames = frames.map((frame) => ({
+      render: (ctx: CanvasRenderingContext2D) => {
+        // Execute the action which updates the graph and renders to main canvas
+        frame.action();
+        // Copy the main canvas to the encoder's canvas
+        ctx.drawImage(this.canvas, 0, 0);
+      },
+      durationMs: frame.duration,
+    }));
+
+    return await encoder.encodeVideo(videoFrames, onProgress);
   }
 
   /**
@@ -504,7 +528,7 @@ export class MovieFacade {
           // Note: loop creates numInterpolationFrames+1 frames
           const actualFrameCount = numInterpolationFrames + 1;
           const frameDuration = targetDuration / actualFrameCount;
-          
+
           for (let j = 0; j <= numInterpolationFrames; j++) {
             const progress = j / numInterpolationFrames;
 
@@ -515,7 +539,12 @@ export class MovieFacade {
                   const start = startPositions.get(node.id);
                   const end = endPositions.get(node.id);
                   if (start && end) {
-                    const interpolated = interpolateWithPBC(start, end, progress, boxSize);
+                    const interpolated = interpolateWithPBC(
+                      start,
+                      end,
+                      progress,
+                      boxSize
+                    );
                     node.coordinates.x = interpolated.x;
                     node.coordinates.y = interpolated.y;
                   }
@@ -555,33 +584,16 @@ export class MovieFacade {
       );
 
       try {
-        // Use VideoEncoder for precise timing
-        const encoder = new VideoEncoder({
-          width: this.canvas.width,
-          height: this.canvas.height,
-          fps: 60,
-          videoBitsPerSecond: 5000000,
-        });
-
-        const videoFrames = frames.map((frame: any) => ({
-          render: (ctx: CanvasRenderingContext2D) => {
-            // Execute the action which updates the graph and renders to main canvas
-            frame.action();
-            // Copy the main canvas to the encoder's canvas
-            ctx.drawImage(this.canvas, 0, 0);
-          },
-          durationMs: frame.duration,
-        }));
-
-        const blob = await encoder.encodeVideo(videoFrames, (current, total) => {
+        const blob = await this.encodeVideoFrames(frames, (current, total) => {
           uiFacade.updateMovieStatus(
-            `Encoding: ${current}/${total} frames (${Math.round((current / total) * 100)}%)`
+            `Encoding: ${current}/${total} frames (${Math.round(
+              (current / total) * 100
+            )}%)`
           );
         });
 
-        // Download the video
         this.downloadBlob(blob, `${simulationType}-simulation.webm`);
-        
+
         uiFacade.updateMovieStatus("Movie saved successfully!");
         setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
       } catch (error) {
@@ -605,9 +617,86 @@ export class MovieFacade {
    */
   private getStopMotionRecorder(): StopMotionRecorder {
     if (!this.stopMotionRecorder) {
+      const scaleFactor = 2;
+
       this.stopMotionRecorder = new StopMotionRecorder({
         canvas: this.canvas,
         frameDuration: 500, // Default 500ms per frame
+        scaleFactor: scaleFactor,
+      });
+
+      // Set up graph state provider for interpolation
+      const graph = this.container.get<Graph>("graph");
+      const app = this.container.get<Application>("app");
+
+      this.stopMotionRecorder.setGraphStateProvider(() => {
+        const nodes = new Map();
+        graph.getAllNodes().forEach((node: Node) => {
+          nodes.set(node.id, {
+            x: node.coordinates.x,
+            y: node.coordinates.y,
+            radius: node.radius,
+            strokeWidth: node.strokeWidth,
+            fillColor: node.fillColor,
+            strokeColor: node.strokeColor,
+          });
+        });
+
+        const edges = graph.getAllEdges().map((edge: Edge) => ({
+          fromId: edge.fromId,
+          toId: edge.toId,
+          color: edge.color,
+          weight: edge.weight,
+        }));
+
+        const arrows = graph.getAllArrows().map((arrow: Arrow) => ({
+          fromId: arrow.fromId,
+          toId: arrow.toId,
+          color: arrow.color,
+          width: arrow.width,
+          headAtStart: arrow.headAtStart,
+          headAtEnd: arrow.headAtEnd,
+        }));
+
+        return {
+          nodes,
+          edges,
+          arrows,
+          zigzagSpacing: graph.zigzagSpacing,
+          zigzagLength: graph.zigzagLength,
+          zigzagEndLengths: graph.zigzagEndLengths,
+        };
+      });
+
+      // Set up render callback for interpolation
+      // This is called during encoding to render intermediate frames
+      // Store the export scale factor to apply to temporary graphs
+      let exportScaleFactor = 1;
+      (this.stopMotionRecorder as any)._setExportScaleFactor = (factor: number) => {
+        exportScaleFactor = factor;
+      };
+      
+      this.stopMotionRecorder.setRenderCallback((tempGraph, extraElements) => {
+        const originalGraph = this.container.get<Graph>("graph");
+        
+        // Set the scaling factor on the temporary graph
+        // This ensures interpolated frames are rendered at the same scale as the export
+        // The tempGraph was created from captured (unscaled) state, so we apply the export scale
+        (tempGraph as any).scalingFactor = {
+          x: exportScaleFactor,
+          y: exportScaleFactor
+        };
+        
+        // Temporarily swap in the interpolated graph
+        this.container.register("graph", tempGraph);
+
+        try {
+          // Render with the temporary graph and extra elements
+          app.render({ x: 1, y: 1 }, extraElements || []);
+        } finally {
+          // Restore original graph
+          this.container.register("graph", originalGraph);
+        }
       });
     }
     return this.stopMotionRecorder;
@@ -625,9 +714,9 @@ export class MovieFacade {
   /**
    * Capture the current canvas state as a frame
    */
-  captureStopMotionFrame(): number {
+  captureStopMotionFrame(customDuration?: number): number {
     const recorder = this.getStopMotionRecorder();
-    recorder.captureFrame();
+    recorder.captureFrame(customDuration);
     return recorder.getFrameCount();
   }
 
@@ -694,30 +783,66 @@ export class MovieFacade {
   /**
    * Create and download the stop-motion movie
    */
-  async createStopMotionMovie(filename?: string): Promise<void> {
+  async createStopMotionMovie(
+    interpolate: boolean = false,
+    filename?: string
+  ): Promise<void> {
     const recorder = this.getStopMotionRecorder();
     const uiFacade = this.container.get<UIFacade>("ui");
+    const canvasFacade = this.container.get<CanvasFacade>("canvas");
+    const graph = this.container.get<Graph>("graph");
+    const app = this.container.get<Application>("app");
+    const settings = this.container.get<GlobalSettings>("settings");
 
     const frameCount = recorder.getFrameCount();
     if (frameCount === 0) {
       throw new Error("No frames captured! Capture some frames first.");
     }
 
-    uiFacade.updateMovieStatus(`Encoding stop-motion animation (${frameCount} frames)...`);
+    uiFacade.updateMovieStatus(
+      `Encoding stop-motion animation (${frameCount} frames)...`
+    );
 
     try {
-      const blob = await recorder.encode((current, total) => {
-        uiFacade.updateMovieStatus(
-          `Encoding: ${current}/${total} frames (${Math.round((current / total) * 100)}%)`
-        );
-      });
+      // Use withScaledCanvas to scale everything consistently (same as PNG export)
+      const exportScaleFactor = settings.imageScaleFactor;
+      await canvasFacade.withScaledCanvas(
+        async () => {
+          app.renderModeInteractive.value = false;
+          
+          // Set the export scale factor for the render callback
+          // This ensures interpolated frames use the correct scaling
+          (recorder as any)._setExportScaleFactor(exportScaleFactor);
 
-      // Download the video
-      const finalFilename = filename || "stop-motion-animation.webm";
-      this.downloadBlob(blob, finalFilename);
+          try {
+            const blob = await recorder.encode(
+              interpolate,
+              (current: number, total: number) => {
+                uiFacade.updateMovieStatus(
+                  `Encoding: ${current}/${total} frames (${Math.round(
+                    (current / total) * 100
+                  )}%)`
+                );
+              }
+            );
 
-      uiFacade.updateMovieStatus("Stop-motion movie saved successfully!");
-      setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
+            // Download the video
+            const finalFilename = filename || "stop-motion-animation.webm";
+            this.downloadBlob(blob, finalFilename);
+
+            uiFacade.updateMovieStatus("Stop-motion movie saved successfully!");
+            setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
+          } finally {
+            app.renderModeInteractive.value = true;
+            // Reset export scale factor
+            (recorder as any)._setExportScaleFactor(1);
+          }
+        },
+        exportScaleFactor, // Use same scale factor as PNG export
+        app,
+        graph,
+        settings
+      );
     } catch (error) {
       console.error("Error creating stop-motion movie:", error);
       uiFacade.updateMovieStatus("Error creating movie!");

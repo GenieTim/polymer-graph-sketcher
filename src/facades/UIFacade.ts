@@ -22,6 +22,10 @@ export class UIFacade {
       "nodeColor",
       "edgeColor",
       "lineWidth",
+      "arrowColor",
+      "arrowWidth",
+      "arrowHeadAtStart",
+      "arrowHeadAtEnd",
       "graph-stats",
       "resizeElements",
       "sideChainLength",
@@ -102,10 +106,14 @@ export class UIFacade {
   /**
    * Update graph statistics display
    */
-  updateGraphStats(nodes: number, edges: number): void {
+  updateGraphStats(nodes: number, edges: number, arrows?: number): void {
     const element = this.getElement("graph-stats");
     if (element) {
-      element.textContent = `Nodes: ${nodes}, Edges: ${edges}`;
+      if (arrows !== undefined && arrows > 0) {
+        element.textContent = `Nodes: ${nodes}, Edges: ${edges}, Arrows: ${arrows}`;
+      } else {
+        element.textContent = `Nodes: ${nodes}, Edges: ${edges}`;
+      }
     }
   }
 

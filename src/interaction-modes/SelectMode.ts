@@ -1,7 +1,7 @@
 import { InteractionMode } from "./InteractionMode";
 import { ActionManager, SelectNodesAction, UnselectNodesAction } from "../actions";
 import { Point, Node } from "../models";
-import { Rectangle } from "../rendering";
+import { Drawable, Rectangle } from "../rendering";
 
 /**
  * Select mode - toggles selection of nodes
@@ -13,7 +13,7 @@ export class SelectMode implements InteractionMode {
   // Rectangle selection state
   private isRectangleSelecting = false;
   private rectangleStart: Point | null = null;
-  private selectionRectangle: Rectangle | null = null;
+  private currentPoint: Point | null = null;
 
   constructor(
     private graph: any, 
@@ -50,65 +50,35 @@ export class SelectMode implements InteractionMode {
     // Start rectangle selection if not clicking on a node
     this.isRectangleSelecting = true;
     this.rectangleStart = point;
-    this.selectionRectangle = new Rectangle(
-      point,
-      0,
-      0,
-      2,
-      "#0066cc",
-      "rgba(0, 102, 204, 0.1)"
-    );
-    
-    // Set dashed line style
-    const ctx = canvasFacade.getContext();
-    ctx.setLineDash([5, 5]);
+    this.currentPoint = point;
   }
 
-  onMouseMove(event: MouseEvent): void {
-    if (!this.isRectangleSelecting || !this.rectangleStart || !this.selectionRectangle) {
-      return;
+  onMouseMove(event: MouseEvent): boolean {
+    if (!this.isRectangleSelecting || !this.rectangleStart) {
+      return false;
     }
 
     const canvasFacade = this.container.get("canvas");
-    const currentPoint = canvasFacade.clientToCanvasCoordinates(event.clientX, event.clientY);
+    this.currentPoint = canvasFacade.clientToCanvasCoordinates(event.clientX, event.clientY);
     
-    // Update rectangle dimensions
-    const width = currentPoint.x - this.rectangleStart.x;
-    const height = currentPoint.y - this.rectangleStart.y;
-    
-    // Handle negative dimensions (dragging up/left)
-    this.selectionRectangle.topLeft = new Point(
-      width >= 0 ? this.rectangleStart.x : currentPoint.x,
-      height >= 0 ? this.rectangleStart.y : currentPoint.y
-    );
-    this.selectionRectangle.width = Math.abs(width);
-    this.selectionRectangle.height = Math.abs(height);
-    
-    // Trigger render to show the rectangle
-    const app = this.container.get("app");
-    app.render();
-    
-    // Draw the selection rectangle on top
-    const ctx = canvasFacade.getContext();
-    ctx.setLineDash([5, 5]);
-    this.selectionRectangle.draw(ctx);
-    ctx.setLineDash([]);
+    // Request render - the rectangle will be drawn via getTemporaryDrawables
+    return true;
   }
 
   onMouseUp(event: MouseEvent): void {
-    if (!this.isRectangleSelecting || !this.rectangleStart || !this.selectionRectangle) {
+    if (!this.isRectangleSelecting || !this.rectangleStart) {
       return;
     }
 
     const canvasFacade = this.container.get("canvas");
-    const currentPoint = canvasFacade.clientToCanvasCoordinates(event.clientX, event.clientY);
+    const finalPoint = canvasFacade.clientToCanvasCoordinates(event.clientX, event.clientY);
     const actionManager = this.container.get("actionManager");
     
     // Calculate final rectangle bounds
-    const minX = Math.min(this.rectangleStart.x, currentPoint.x);
-    const maxX = Math.max(this.rectangleStart.x, currentPoint.x);
-    const minY = Math.min(this.rectangleStart.y, currentPoint.y);
-    const maxY = Math.max(this.rectangleStart.y, currentPoint.y);
+    const minX = Math.min(this.rectangleStart.x, finalPoint.x);
+    const maxX = Math.max(this.rectangleStart.x, finalPoint.x);
+    const minY = Math.min(this.rectangleStart.y, finalPoint.y);
+    const maxY = Math.max(this.rectangleStart.y, finalPoint.y);
     
     // Find all nodes within the rectangle
     const nodesInRectangle = this.graph.getAllNodes().filter((node: Node) => {
@@ -126,11 +96,7 @@ export class SelectMode implements InteractionMode {
     // Clean up
     this.isRectangleSelecting = false;
     this.rectangleStart = null;
-    this.selectionRectangle = null;
-    
-    // Reset line dash
-    const ctx = canvasFacade.getContext();
-    ctx.setLineDash([]);
+    this.currentPoint = null;
     
     // Trigger final render
     const app = this.container.get("app");
@@ -141,6 +107,37 @@ export class SelectMode implements InteractionMode {
     // Clean up rectangle selection state when exiting the mode
     this.isRectangleSelecting = false;
     this.rectangleStart = null;
-    this.selectionRectangle = null;
+    this.currentPoint = null;
+  }
+
+  /**
+   * Get temporary drawable elements (selection rectangle during drag)
+   */
+  getTemporaryDrawables(): Drawable[] {
+    if (!this.isRectangleSelecting || !this.rectangleStart || !this.currentPoint) {
+      return [];
+    }
+
+    // Calculate rectangle dimensions
+    const width = this.currentPoint.x - this.rectangleStart.x;
+    const height = this.currentPoint.y - this.rectangleStart.y;
+    
+    // Handle negative dimensions (dragging up/left)
+    const topLeft = new Point(
+      width >= 0 ? this.rectangleStart.x : this.currentPoint.x,
+      height >= 0 ? this.rectangleStart.y : this.currentPoint.y
+    );
+
+    return [
+      new Rectangle(
+        topLeft,
+        Math.abs(width),
+        Math.abs(height),
+        2,
+        "#0066cc",
+        "rgba(0, 102, 204, 0.1)",
+        true // dashed
+      )
+    ];
   }
 }

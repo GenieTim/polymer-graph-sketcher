@@ -164,14 +164,14 @@ describe('Image Export - PNG with Correct Dimensions', () => {
     selection.addItem(nodes[0]);
     
     // Initially, selection should be shown
-    expect(app.showSelection.value).toBe(true);
+    expect(app.renderModeInteractive.value).toBe(true);
     
     let selectionVisibleDuringExport = true;
     
     // Act: Export with scaling (which should hide selection)
     canvasFacade.withScaledCanvas(
       () => {
-        selectionVisibleDuringExport = app.showSelection.value;
+        selectionVisibleDuringExport = app.renderModeInteractive.value;
         app.render();
       },
       2,
@@ -184,7 +184,7 @@ describe('Image Export - PNG with Correct Dimensions', () => {
     expect(selectionVisibleDuringExport).toBe(false);
     
     // Assert: Selection should be restored after export
-    expect(app.showSelection.value).toBe(true);
+    expect(app.renderModeInteractive.value).toBe(true);
   });
 
   it('should maintain aspect ratio when scaling', () => {

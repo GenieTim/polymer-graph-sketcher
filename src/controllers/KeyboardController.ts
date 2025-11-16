@@ -1,4 +1,6 @@
+import { UIFacade } from "@/facades/UIFacade";
 import { Container } from "../core/Container";
+import { UIController } from "./UIController";
 
 /**
  * Controller for keyboard shortcuts
@@ -24,13 +26,19 @@ export class KeyboardController {
   private handleKeyDown(event: KeyboardEvent): void {
     const actionManager = this.container.get<any>("actionManager");
     const modeFactory = this.container.get<any>("modeFactory");
-    const ClearSelectionAction = this.container.get<any>("ClearSelectionAction");
-    const SelectAllNodesAction = this.container.get<any>("SelectAllNodesAction");
-    const InvertSelectionAction = this.container.get<any>("InvertSelectionAction");
+    const ClearSelectionAction = this.container.get<any>(
+      "ClearSelectionAction"
+    );
+    const SelectAllNodesAction = this.container.get<any>(
+      "SelectAllNodesAction"
+    );
+    const InvertSelectionAction = this.container.get<any>(
+      "InvertSelectionAction"
+    );
     const DeleteNodesAction = this.container.get<any>("DeleteNodesAction");
     const selection = this.container.get<any>("selection");
     const Node = this.container.get<any>("Node");
-    const movieFacade = this.container.get<any>("movie");
+    const ui = this.container.get<UIFacade>("ui");
 
     // Ctrl/Cmd shortcuts
     if (event.ctrlKey || event.metaKey) {
@@ -40,7 +48,7 @@ export class KeyboardController {
         actionManager.undo();
         return;
       }
-      
+
       // Redo: Ctrl/Cmd + Shift + Z OR Ctrl/Cmd + Y
       if ((event.key === "z" && event.shiftKey) || event.key === "y") {
         event.preventDefault();
@@ -85,7 +93,9 @@ export class KeyboardController {
           break;
         case "Backspace":
         case "Delete":
-          actionManager.addAction(new DeleteNodesAction(selection.getItemsOfClass(Node)));
+          actionManager.addAction(
+            new DeleteNodesAction(selection.getItemsOfClass(Node))
+          );
           break;
 
         // Mode shortcuts
@@ -124,10 +134,7 @@ export class KeyboardController {
 
         // Stop-motion frame capture shortcut
         case "f":
-          // Only capture if stop-motion recording is active
-          if (movieFacade && movieFacade.isStopMotionRecording()) {
-            this.captureStopMotionFrame();
-          }
+          (ui.getElement("captureFrameBtn") as HTMLButtonElement).click();
           break;
       }
     }
@@ -137,7 +144,9 @@ export class KeyboardController {
    * Update the mode UI element to reflect the current mode
    */
   private updateModeUI(mode: string): void {
-    const modeSwitch = document.getElementById("modeSwitch") as HTMLSelectElement;
+    const modeSwitch = document.getElementById(
+      "modeSwitch"
+    ) as HTMLSelectElement;
     if (modeSwitch) {
       modeSwitch.value = mode;
     }
@@ -155,7 +164,10 @@ export class KeyboardController {
     }
 
     const frameCount = movieFacade.captureStopMotionFrame();
-    uiFacade.updateStopMotionIndicator(`Recording... (${frameCount} frames)`, "red");
+    uiFacade.updateStopMotionIndicator(
+      `Recording... (${frameCount} frames)`,
+      "red"
+    );
     uiFacade.updateMovieStatus(`Frame ${frameCount} captured!`);
   }
 

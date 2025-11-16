@@ -1,4 +1,4 @@
 // Utility exports
-export { GlobalSettings } from "./GlobalSettings";
+export { GlobalSettings, InterpolationMode } from "./GlobalSettings";
 export { Colour } from "./Colour";
 export * from "./PeriodicBoundaryConditions";

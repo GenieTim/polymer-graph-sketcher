@@ -245,8 +245,10 @@ export class StopMotionRecorder {
 
     // Iterate through pairs of captured frames
     for (let i = 0; i < this.cels.length - 1; i++) {
+      const prevFrame = i > 0 ? this.cels[i - 1] : null;
       const startFrame = this.cels[i];
       const endFrame = this.cels[i + 1];
+      const nextFrame = i + 2 < this.cels.length ? this.cels[i + 2] : null;
 
       // Calculate how many intermediate frames we need based on the duration
       // Use endFrame.duration: this is the duration set BEFORE capturing the end frame,
@@ -317,11 +319,13 @@ export class StopMotionRecorder {
           // Apply the hybrid state
           applyGraphState(tempGraph, hybridState);
 
-          // Interpolate node positions
+          // Interpolate node positions with multi-frame context for higher-order interpolation
           interpolateNodePositions(
             tempGraph,
+            prevFrame ? prevFrame.graphState : null,
             startFrame.graphState,
             endFrame.graphState,
+            nextFrame ? nextFrame.graphState : null,
             progress,
             diff.commonNodes
           );
@@ -409,7 +413,7 @@ export class StopMotionRecorder {
     let videoFrames;
 
     if (interpolate) {
-      // Generate interpolated frames at 30 fps
+      // Generate interpolated frames at fps
       videoFrames = this.generateInterpolatedFrames(fps);
     } else {
       // Convert frames to render functions (no interpolation)

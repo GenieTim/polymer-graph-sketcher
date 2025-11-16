@@ -6,7 +6,12 @@
  */
 
 import { Point, Graph } from '../models';
-import { interpolateWithPBC, getBoxSize } from '../utils/PeriodicBoundaryConditions';
+import { 
+  interpolateWithPBC, 
+  interpolateCubicWithPBC,
+  interpolateCatmullRomWithPBC,
+  getBoxSize 
+} from '../utils/PeriodicBoundaryConditions';
 import { PartialLine } from '../rendering/PartialLine';
 import { ArrowLine } from '../rendering/ArrowLine';
 import { GlobalSettings } from '../utils/GlobalSettings';
@@ -115,28 +120,56 @@ export function applyGraphState(graph: Graph, state: GraphState): void {
 }
 
 /**
- * Interpolate node positions between two graph states
+ * Interpolate node positions between graph states
+ * Supports linear, cubic, and Catmull-Rom interpolation
+ * 
+ * @param graph - The graph to modify
+ * @param prevState - Previous graph state (for higher-order interpolation, can be null)
+ * @param startState - Start graph state
+ * @param endState - End graph state
+ * @param nextState - Next graph state (for higher-order interpolation, can be null)
+ * @param progress - Progress from 0 to 1 (between startState and endState)
+ * @param commonNodes - Array of node IDs that exist in all relevant states
  */
 export function interpolateNodePositions(
   graph: Graph,
+  prevState: GraphState | null,
   startState: GraphState,
   endState: GraphState,
+  nextState: GraphState | null,
   progress: number,
   commonNodes: number[]
 ): void {
   const boxSize = getBoxSize();
+  const settings = GlobalSettings.instance;
   
   commonNodes.forEach(nodeId => {
+    const prevNode = prevState?.nodes.get(nodeId) || null;
     const startNode = startState.nodes.get(nodeId);
     const endNode = endState.nodes.get(nodeId);
+    const nextNode = nextState?.nodes.get(nodeId) || null;
     const graphNode = graph.getNode(nodeId);
     
     if (startNode && endNode && graphNode) {
       const startPos = new Point(startNode.x, startNode.y);
       const endPos = new Point(endNode.x, endNode.y);
       
-      // Interpolate position with PBC
-      const interpolated = interpolateWithPBC(startPos, endPos, progress, boxSize);
+      let interpolated: Point;
+      
+      // Choose interpolation method based on settings
+      if (settings.interpolationMode === 'cubic') {
+        const prevPos = prevNode ? new Point(prevNode.x, prevNode.y) : null;
+        const nextPos = nextNode ? new Point(nextNode.x, nextNode.y) : null;
+        interpolated = interpolateCubicWithPBC(prevPos, startPos, endPos, nextPos, progress, boxSize);
+      } else if (settings.interpolationMode === 'catmull-rom') {
+        const prevPos = prevNode ? new Point(prevNode.x, prevNode.y) : null;
+        const nextPos = nextNode ? new Point(nextNode.x, nextNode.y) : null;
+        interpolated = interpolateCatmullRomWithPBC(prevPos, startPos, endPos, nextPos, progress, boxSize);
+      } else {
+        // Default: linear interpolation
+        interpolated = interpolateWithPBC(startPos, endPos, progress, boxSize);
+      }
+      
       graphNode.coordinates.x = interpolated.x;
       graphNode.coordinates.y = interpolated.y;
       

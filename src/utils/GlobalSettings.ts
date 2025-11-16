@@ -1,6 +1,15 @@
 import { Point } from "../models/Point";
 
 /**
+ * Interpolation mode for stop-motion animation
+ */
+export enum InterpolationMode {
+  LINEAR = 'linear',
+  CUBIC = 'cubic',
+  CATMULL_ROM = 'catmull-rom'
+}
+
+/**
  * A settings class, which is a singleton pattern.
  * 
  */
@@ -10,6 +19,7 @@ export class GlobalSettings {
   backgroundColor: string;
   imageScaleFactor: number;
   disablePBC: boolean = false;
+  interpolationMode: InterpolationMode = InterpolationMode.LINEAR;
 
   static #instance: GlobalSettings;
 
@@ -45,6 +55,9 @@ export class GlobalSettings {
     );
     if ("disablePBC" in json) {
       GlobalSettings.#instance.disablePBC = json.disablePBC;
+    }
+    if ("interpolationMode" in json) {
+      GlobalSettings.#instance.interpolationMode = json.interpolationMode as InterpolationMode;
     }
     return GlobalSettings.#instance;
   }

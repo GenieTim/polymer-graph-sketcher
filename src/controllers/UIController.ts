@@ -604,11 +604,12 @@ export class UIController {
     }
 
     // Get the current frame duration setting
-    const duration = uiFacade.getInputValueAsNumber("stopMotionFrameDuration") || 500;
+    const duration = uiFacade.getInputValueAsNumber("stopMotionFrameDuration");
+    console.log(`Capturing frame with duration: ${duration}ms`);
 
     const frameCount = movieFacade.captureStopMotionFrame(duration);
     uiFacade.updateStopMotionIndicator(`Recording... (${frameCount} frames)`, "red");
-    uiFacade.updateMovieStatus(`Frame ${frameCount} captured (duration: ${duration}ms)!`);
+    uiFacade.updateMovieStatus(`Frame ${frameCount} captured with duration: ${duration}ms.`);
   }
 
   /**

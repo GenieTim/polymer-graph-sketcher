@@ -136,9 +136,9 @@ function bootstrap(): void {
   keyboardController.attachEventListeners();
 
   // Load saved state from localStorage
-  const stateLoaded = StorageService.loadState(graph, settings);
+  const loadResult = StorageService.loadState(graph, settings);
   
-  if (stateLoaded) {
+  if (loadResult.success) {
     // Update canvas and UI to match loaded settings
     canvasFacade.resize(settings.canvasSize.x, settings.canvasSize.y);
     uiFacade.updateCanvasSizeUI(settings.canvasSize.x, settings.canvasSize.y);
@@ -147,6 +147,17 @@ function bootstrap(): void {
     if (graph.getNrOfNodes() > 0) {
       const nodeIds = graph.getAllNodeIds();
       nodeCounter.value = Math.max(...nodeIds) + 1;
+    }
+    
+    // Restore animation data if present
+    if (loadResult.animations) {
+      try {
+        movieFacade.restoreAnimationData(loadResult.animations, graph);
+        console.log("Animation data restored from localStorage");
+      } catch (error) {
+        console.warn("Could not restore animation data:", error);
+        // Continue anyway - animation restoration is not critical
+      }
     }
     
     console.log("Loaded previous state from localStorage");
@@ -161,14 +172,24 @@ function bootstrap(): void {
   
   app.render();
 
+  // Helper function to get animation data for saving
+  const getAnimationDataForSave = () => {
+    try {
+      return movieFacade.getSerializableAnimationData();
+    } catch (error) {
+      console.warn("Could not get animation data for saving:", error);
+      return null;
+    }
+  };
+
   // Save state to localStorage when page is about to unload
   window.addEventListener("beforeunload", () => {
-    StorageService.saveState(graph, settings);
+    StorageService.saveState(graph, settings, getAnimationDataForSave());
   });
   
   // Also save state periodically (every 30 seconds) as a backup
   setInterval(() => {
-    StorageService.saveState(graph, settings);
+    StorageService.saveState(graph, settings, getAnimationDataForSave());
   }, 30000);
 
   console.log("Application initialized successfully");

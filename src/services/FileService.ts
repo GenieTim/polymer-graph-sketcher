@@ -24,9 +24,21 @@ export class FileService {
   exportGraph(): void {
     const graph = this.container.get<Graph>("graph");
     const settings = this.container.get<GlobalSettings>("settings");
+    
+    // Get animation data from MovieFacade if available
+    let animations = null;
+    try {
+      const movieFacade = this.container.get<any>("movieFacade");
+      if (movieFacade) {
+        animations = movieFacade.getSerializableAnimationData();
+      }
+    } catch (error) {
+      // MovieFacade might not be registered yet, that's okay
+      console.log("MovieFacade not available for animation export");
+    }
 
-    const state = StorageService.serialize(graph, settings);
-    const blob = new Blob([JSON.stringify(state)], {
+    const state = StorageService.serialize(graph, settings, animations);
+    const blob = new Blob([JSON.stringify(state, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
@@ -53,9 +65,9 @@ export class FileService {
       if (event.target?.result) {
         try {
           const data = JSON.parse(event.target.result as string);
-          const success = StorageService.deserialize(data, graph, settings);
+          const result = StorageService.deserialize(data, graph, settings);
 
-          if (success) {
+          if (result.success) {
             // Update canvas and UI to match imported settings
             canvasFacade.resize(settings.canvasSize.x, settings.canvasSize.y);
             uiFacade.updateCanvasSizeUI(
@@ -70,6 +82,20 @@ export class FileService {
             if (nodeCounter && graph.getNrOfNodes() > 0) {
               const nodeIds = graph.getAllNodeIds();
               nodeCounter.value = Math.max(...nodeIds) + 1;
+            }
+
+            // Restore animation data if present
+            if (result.animations) {
+              try {
+                const movieFacade = this.container.get<any>("movieFacade");
+                if (movieFacade) {
+                  movieFacade.restoreAnimationData(result.animations, graph);
+                  console.log("Animation data restored from file");
+                }
+              } catch (error) {
+                console.warn("Could not restore animation data:", error);
+                // Continue anyway - animation restoration is not critical
+              }
             }
 
             // Re-render

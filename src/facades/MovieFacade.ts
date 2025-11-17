@@ -4,7 +4,6 @@ import { StopMotionRecorder } from "../animation/stop-motion-recorder";
 import { Node, Graph, Edge, Arrow } from "../models";
 import { Container } from "../core/Container";
 import { Application } from "../core/Application";
-import { PartialLine } from "../rendering/PartialLine";
 import { interpolateWithPBC, getBoxSize, GlobalSettings } from "../utils";
 import type { UIFacade } from "./UIFacade";
 import { CanvasFacade } from "./CanvasFacade";
@@ -54,78 +53,6 @@ export class MovieFacade {
   }
 
   /**
-   * Start recording edge additions/deletions
-   */
-  startRecordingEdges(): void {
-    if (this.isRecordingEdges) {
-      console.warn("Already recording edges");
-      return;
-    }
-
-    this.isRecordingEdges = true;
-    this.recordingEdges = [];
-    console.log("Started recording edge additions");
-  }
-
-  /**
-   * Stop recording edges
-   */
-  stopRecordingEdges(): number {
-    if (!this.isRecordingEdges) {
-      console.warn("Not currently recording edges");
-      return 0;
-    }
-
-    this.isRecordingEdges = false;
-    const count = this.recordingEdges.length;
-    console.log(`Stopped recording. ${count} edges recorded.`);
-    return count;
-  }
-
-  /**
-   * Record an edge action
-   */
-  recordEdgeAction(
-    type: "add" | "remove",
-    fromNode: Node,
-    toNode: Node,
-    color: string,
-    weight: number
-  ): void {
-    if (!this.isRecordingEdges) {
-      return;
-    }
-
-    this.recordingEdges.push({
-      type,
-      fromNode,
-      toNode,
-      color,
-      weight,
-    });
-  }
-
-  /**
-   * Get recorded edges
-   */
-  getRecordedEdges(): Array<{
-    type: "add" | "remove";
-    fromNode: Node;
-    toNode: Node;
-    color: string;
-    weight: number;
-  }> {
-    return [...this.recordingEdges];
-  }
-
-  /**
-   * Clear recorded edges
-   */
-  clearRecordedEdges(): void {
-    this.recordingEdges = [];
-  }
-
-  /**
    * Check if currently recording
    */
   get isRecording(): boolean {
@@ -140,202 +67,158 @@ export class MovieFacade {
   }
 
   /**
-   * Create and download movie of recorded edge additions using VideoEncoder
+   * Get serializable animation data for export/storage
    */
-  async createEdgeAdditionMovie(
-    edgeDuration: number,
-    interpolationSteps: number = 30
-  ): Promise<void> {
-    if (this.recordingEdges.length === 0) {
-      throw new Error("No edges recorded! Use 'Start Recording Edges' first.");
+  getSerializableAnimationData(): any {
+    const result: any = {};
+
+    // Get stop-motion data if available
+    if (this.stopMotionRecorder) {
+      const frames = this.stopMotionRecorder.getFrames();
+      if (frames.length > 0) {
+        result.stopMotion = {
+          frames: frames.map(frame => ({
+            graphState: {
+              nodes: Array.from(frame.graphState.nodes.entries()).map(([id, node]) => ({
+                id,
+                x: node.x,
+                y: node.y,
+                radius: node.radius,
+                strokeWidth: node.strokeWidth,
+                fillColor: node.fillColor,
+                strokeColor: node.strokeColor,
+              })),
+              edges: frame.graphState.edges,
+              arrows: frame.graphState.arrows,
+              zigzagSpacing: frame.graphState.zigzagSpacing,
+              zigzagLength: frame.graphState.zigzagLength,
+              zigzagEndLengths: frame.graphState.zigzagEndLengths,
+            },
+            duration: frame.duration,
+            timestamp: frame.timestamp,
+          })),
+          frameDuration: this.stopMotionRecorder.getFrameDuration(),
+          isRecording: this.stopMotionRecorder.getIsRecording(),
+        };
+      }
     }
 
-    const graph = this.container.get<Graph>("graph");
-    const app = this.container.get<Application>("app");
+    // Get recorded edges data if available
+    if (this.recordingEdges.length > 0 || this.isRecordingEdges) {
+      result.recordedEdges = {
+        edges: this.recordingEdges.map(edge => ({
+          type: edge.type,
+          fromNodeId: edge.fromNode.id,
+          toNodeId: edge.toNode.id,
+          color: edge.color,
+          weight: edge.weight,
+        })),
+        isRecording: this.isRecordingEdges,
+      };
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
+  }
+
+  /**
+   * Restore animation data from serialized format
+   */
+  restoreAnimationData(data: any, graph: Graph): void {
     const uiFacade = this.container.get<UIFacade>("ui");
-    const settings = this.container.get<any>("settings");
-
-    // Check if canvas has been scaled for export
-    const scaleFactor = settings.isScaled ? settings.imageScaleFactor : 1;
-
-    // Calculate initial state by tracking net changes
-    const edgeNetChanges = new Map<string, any>();
-    this.recordingEdges.forEach(
-      ({ type, fromNode, toNode, color, weight }: any) => {
-        const key =
-          fromNode.id < toNode.id
-            ? `${fromNode.id}-${toNode.id}`
-            : `${toNode.id}-${fromNode.id}`;
-
-        edgeNetChanges.set(key, {
-          lastAction: type,
-          fromNode,
-          toNode,
-          color,
-          weight,
-        });
+    
+    // Restore stop-motion frames
+    if (data.stopMotion && data.stopMotion.frames) {
+      const recorder = this.getStopMotionRecorder();
+      
+      // Clear existing frames
+      recorder.clear();
+      
+      // Set frame duration
+      if (data.stopMotion.frameDuration !== undefined) {
+        recorder.setFrameDuration(data.stopMotion.frameDuration);
       }
-    );
-
-    // Restore to initial state
-    const animationPartialEdges: any[] = [];
-    edgeNetChanges.forEach((netChange) => {
-      const edges = graph.getEdgesInvolvingNodes([
-        netChange.fromNode.id,
-        netChange.toNode.id,
-      ]);
-      const matchingEdge = edges.find(
-        (edge: Edge) =>
-          (edge.fromId === netChange.fromNode.id &&
-            edge.toId === netChange.toNode.id) ||
-          (edge.fromId === netChange.toNode.id &&
-            edge.toId === netChange.fromNode.id)
-      );
-
-      if (netChange.lastAction === "add") {
-        if (matchingEdge) {
-          graph.deleteEdge(matchingEdge);
-        }
-      } else {
-        if (!matchingEdge) {
-          graph.addEdge(
-            netChange.fromNode.id,
-            netChange.toNode.id,
-            netChange.color,
-            netChange.weight
-          );
-        }
-      }
-    });
-
-    app.render();
-
-    // Create animation frames
-    const frames: any[] = [];
-    this.recordingEdges.forEach(
-      ({ type, fromNode, toNode, color, weight }: any, edgeIndex: number) => {
-        // Note: loop creates interpolationSteps+1 frames, so divide by that
-        const stepDuration = edgeDuration / (interpolationSteps + 1);
-
-        // Get the current node positions (which are already scaled if in scaled mode)
-        // and the current edge weight (which should also be scaled)
-        const currentFromNode = graph.getNode(fromNode.id);
-        const currentToNode = graph.getNode(toNode.id);
-
-        // Use current (scaled) node positions
-        const fromPos = currentFromNode
-          ? currentFromNode.coordinates
-          : fromNode.coordinates;
-        const toPos = currentToNode
-          ? currentToNode.coordinates
-          : toNode.coordinates;
-
-        // The weight needs to be scaled if we're in scaled mode
-        const scaledWeight = weight * scaleFactor;
-
-        // Create PartialLine with zigZagged matching the graph's edge style
-        // Use the actual edge properties from the graph (which are already scaled)
-        const partialLine = new PartialLine(
-          { x: fromPos.x, y: fromPos.y },
-          { x: toPos.x, y: toPos.y },
-          type === "add" ? 0 : 1,
-          true, // zigZagged - match the graph's edge rendering style
-          color,
-          scaledWeight,
-          graph.zigzagSpacing,
-          graph.zigzagLength,
-          graph.zigzagEndLengths
-        );
-
-        for (let i = 0; i <= interpolationSteps; i++) {
-          // Capture the current values in the closure
-          const currentStep = i;
-          // Progress from 0 to 1, but we'll start from a tiny value to ensure visibility
-          const progress = i / interpolationSteps;
-
-          frames.push({
-            action: () => {
-              if (type === "add") {
-                if (currentStep < interpolationSteps) {
-                  // Animation in progress - update progress and keep in array
-                  // Start from 0.01 instead of 0 so the line is always visible
-                  const visibleProgress = Math.max(0.01, progress);
-                  partialLine.setProgress(visibleProgress);
-                  animationPartialEdges[edgeIndex] = partialLine;
-                } else {
-                  // Last frame - add the actual edge and remove partial
-                  animationPartialEdges[edgeIndex] = null;
-                  graph.addEdge(fromNode.id, toNode.id, color, scaledWeight);
-                }
-              } else {
-                if (currentStep === 0) {
-                  // Start removal animation - remove actual edge and show full partial line
-                  const edges = graph.getEdgesInvolvingNodes([
-                    fromNode.id,
-                    toNode.id,
-                  ]);
-                  const edgeToRemove = edges.find(
-                    (edge: Edge) =>
-                      (edge.fromId === fromNode.id &&
-                        edge.toId === toNode.id) ||
-                      (edge.fromId === toNode.id && edge.toId === fromNode.id)
-                  );
-                  if (edgeToRemove) {
-                    graph.deleteEdge(edgeToRemove);
-                  }
-                  partialLine.setProgress(1);
-                  animationPartialEdges[edgeIndex] = partialLine;
-                } else if (currentStep < interpolationSteps) {
-                  // Middle of animation - shrink the line
-                  partialLine.setProgress(1 - progress);
-                } else {
-                  // End of animation - remove partial line completely
-                  animationPartialEdges[edgeIndex] = null;
-                }
-              }
-
-              // Render the frame with partial edges
-              // Pass partial edges as extra elements to app.render()
-              // They will be drawn after edges but before nodes
-              const partialEdges = animationPartialEdges.filter(
-                (partial: any) => partial !== null
-              );
-              app.render({ x: 1, y: 1 }, partialEdges);
-            },
-            duration: stepDuration,
+      
+      // Restore each frame
+      // Note: We need to reconstruct the frames manually since they include ImageData
+      // which cannot be serialized. We'll restore just the graph state.
+      data.stopMotion.frames.forEach((frameData: any) => {
+        // Convert nodes array back to Map
+        const nodesMap = new Map();
+        frameData.graphState.nodes.forEach((node: any) => {
+          nodesMap.set(node.id, {
+            x: node.x,
+            y: node.y,
+            radius: node.radius,
+            strokeWidth: node.strokeWidth,
+            fillColor: node.fillColor,
+            strokeColor: node.strokeColor,
           });
-        }
-      }
-    );
+        });
 
-    const addCount = this.recordingEdges.filter(
-      (e: any) => e.type === "add"
-    ).length;
-    const removeCount = this.recordingEdges.filter(
-      (e: any) => e.type === "remove"
-    ).length;
-    uiFacade.updateMovieStatus(
-      `Encoding edge animation (${addCount} additions, ${removeCount} removals)...`
-    );
+        // Create a dummy ImageData (will need to be re-captured for actual use)
+        const dummyImageData = new ImageData(1, 1);
 
-    try {
-      const blob = await this.encodeVideoFrames(frames, (current, total) => {
-        uiFacade.updateMovieStatus(
-          `Encoding: ${current}/${total} frames (${Math.round(
-            (current / total) * 100
-          )}%)`
-        );
+        // Add frame to recorder's internal state
+        (recorder as any).cels.push({
+          imageData: dummyImageData,
+          graphState: {
+            nodes: nodesMap,
+            edges: frameData.graphState.edges,
+            arrows: frameData.graphState.arrows,
+            zigzagSpacing: frameData.graphState.zigzagSpacing,
+            zigzagLength: frameData.graphState.zigzagLength,
+            zigzagEndLengths: frameData.graphState.zigzagEndLengths,
+          },
+          duration: frameData.duration,
+          timestamp: frameData.timestamp,
+        });
       });
 
-      this.downloadBlob(blob, "edge-animation.webm");
+      // Restore recording state
+      if (data.stopMotion.isRecording) {
+        (recorder as any).isRecording = true;
+      }
+      
+      const frameCount = data.stopMotion.frames.length;
+      console.log(`Restored ${frameCount} stop-motion frames`);
+      
+      // Update UI to show restored frames
+      if (data.stopMotion.isRecording) {
+        uiFacade.updateStopMotionIndicator(
+          `Recording... (${frameCount} frame${frameCount !== 1 ? 's' : ''})`,
+          "red"
+        );
+        // Enable appropriate buttons for recording state
+        this.updateStopMotionButtons(true, frameCount);
+      } else if (frameCount > 0) {
+        uiFacade.updateStopMotionIndicator(
+          `${frameCount} frame${frameCount !== 1 ? 's' : ''} captured`,
+          "green"
+        );
+        // Enable appropriate buttons for stopped state with frames
+        this.updateStopMotionButtons(false, frameCount);
+      }
+    }
 
-      uiFacade.updateMovieStatus("Movie saved successfully!");
-      setTimeout(() => uiFacade.updateMovieStatus(""), 3000);
-    } catch (error) {
-      console.error("Error creating movie:", error);
-      throw new Error("Error creating movie: " + error);
-    } finally {
-      animationPartialEdges.length = 0;
+    // Restore recorded edges
+    if (data.recordedEdges && data.recordedEdges.edges) {
+      this.recordingEdges = data.recordedEdges.edges.map((edgeData: any) => {
+        const fromNode = graph.getNode(edgeData.fromNodeId);
+        const toNode = graph.getNode(edgeData.toNodeId);
+        
+        return {
+          type: edgeData.type as "add" | "remove",
+          fromNode: fromNode,
+          toNode: toNode,
+          color: edgeData.color,
+          weight: edgeData.weight,
+        };
+      });
+      
+      // Restore recording state
+      this.isRecordingEdges = data.recordedEdges.isRecording || false;
+      
+      console.log(`Restored ${this.recordingEdges.length} recorded edges`);
     }
   }
 
@@ -778,6 +661,35 @@ export class MovieFacade {
   clearStopMotionFrames(): void {
     const recorder = this.getStopMotionRecorder();
     recorder.clear();
+  }
+
+  /**
+   * Update stop-motion button states based on recording state
+   * @param isRecording Whether recording is active
+   * @param frameCount Number of frames captured
+   */
+  private updateStopMotionButtons(isRecording: boolean, frameCount: number): void {
+    const startBtn = document.getElementById("startStopMotionBtn") as HTMLButtonElement;
+    const captureBtn = document.getElementById("captureFrameBtn") as HTMLButtonElement;
+    const removeBtn = document.getElementById("removeLastFrameBtn") as HTMLButtonElement;
+    const stopBtn = document.getElementById("stopStopMotionBtn") as HTMLButtonElement;
+    const clearBtn = document.getElementById("clearStopMotionFramesBtn") as HTMLButtonElement;
+
+    if (isRecording) {
+      // Recording is active
+      if (startBtn) startBtn.disabled = true;
+      if (captureBtn) captureBtn.disabled = false;
+      if (removeBtn) removeBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = false;
+      if (clearBtn) clearBtn.disabled = true;
+    } else {
+      // Recording is stopped
+      if (startBtn) startBtn.disabled = false;
+      if (captureBtn) captureBtn.disabled = true;
+      if (removeBtn) removeBtn.disabled = frameCount === 0;
+      if (stopBtn) stopBtn.disabled = true;
+      if (clearBtn) clearBtn.disabled = frameCount === 0;
+    }
   }
 
   /**

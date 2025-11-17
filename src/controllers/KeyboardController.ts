@@ -1,6 +1,5 @@
-import { UIFacade } from "@/facades/UIFacade";
+import { UIFacade } from "../facades/UIFacade";
 import { Container } from "../core/Container";
-import { UIController } from "./UIController";
 
 /**
  * Controller for keyboard shortcuts
@@ -150,25 +149,6 @@ export class KeyboardController {
     if (modeSwitch) {
       modeSwitch.value = mode;
     }
-  }
-
-  /**
-   * Capture a stop-motion frame (called by keyboard shortcut)
-   */
-  private captureStopMotionFrame(): void {
-    const movieFacade = this.container.get<any>("movie");
-    const uiFacade = this.container.get<any>("ui");
-
-    if (!movieFacade || !movieFacade.isStopMotionRecording()) {
-      return;
-    }
-
-    const frameCount = movieFacade.captureStopMotionFrame();
-    uiFacade.updateStopMotionIndicator(
-      `Recording... (${frameCount} frames)`,
-      "red"
-    );
-    uiFacade.updateMovieStatus(`Frame ${frameCount} captured!`);
   }
 
   /**

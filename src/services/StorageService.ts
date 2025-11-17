@@ -2,6 +2,48 @@ import { Graph } from "../models/Graph";
 import { GlobalSettings } from "../utils/GlobalSettings";
 
 /**
+ * Serialized animation data for stop-motion recordings
+ */
+export interface SerializedStopMotionFrame {
+  graphState: {
+    nodes: Array<{ id: number; x: number; y: number; radius: number; strokeWidth: number; fillColor: string; strokeColor: string }>;
+    edges: Array<{ fromId: number; toId: number; color: string; weight: number }>;
+    arrows: Array<{ fromId: number; toId: number; color: string; width: number; headAtStart: boolean; headAtEnd: boolean }>;
+    zigzagSpacing?: number;
+    zigzagLength?: number;
+    zigzagEndLengths?: number;
+  };
+  duration: number;
+  timestamp: number;
+}
+
+/**
+ * Serialized edge recording data
+ */
+export interface SerializedRecordedEdge {
+  type: "add" | "remove";
+  fromNodeId: number;
+  toNodeId: number;
+  color: string;
+  weight: number;
+}
+
+/**
+ * Serialized animation data container
+ */
+export interface SerializedAnimations {
+  stopMotion?: {
+    frames: SerializedStopMotionFrame[];
+    frameDuration: number;
+    isRecording: boolean;
+  };
+  recordedEdges?: {
+    edges: SerializedRecordedEdge[];
+    isRecording: boolean;
+  };
+}
+
+/**
  * Serialized state interface for type safety
  */
 export interface SerializedState {
@@ -9,6 +51,7 @@ export interface SerializedState {
   timestamp?: string;
   graph: any;
   settings: any;
+  animations?: SerializedAnimations;
 }
 
 /**
@@ -25,15 +68,23 @@ export class StorageService {
    * This is the centralized method used by both localStorage and file export
    * @param graph The graph instance to serialize
    * @param settings The settings instance to serialize
+   * @param animations Optional animation data to include
    * @returns Serialized state object
    */
-  static serialize(graph: Graph, settings: GlobalSettings): SerializedState {
-    return {
+  static serialize(graph: Graph, settings: GlobalSettings, animations?: SerializedAnimations | null): SerializedState {
+    const state: SerializedState = {
       version: this.STORAGE_VERSION,
       timestamp: new Date().toISOString(),
       graph: graph,  // Graph already has proper toJSON via its structure
       settings: settings,  // Settings already has proper toJSON via its structure
     };
+
+    // Only include animations if they exist
+    if (animations && Object.keys(animations).length > 0) {
+      state.animations = animations;
+    }
+
+    return state;
   }
 
   /**
@@ -42,13 +93,13 @@ export class StorageService {
    * @param data The serialized state data
    * @param graph The graph instance to populate
    * @param settings The settings instance to populate
-   * @returns true if deserialization was successful, false otherwise
+   * @returns Object with success flag and optional animation data
    */
   static deserialize(
     data: SerializedState,
     graph: Graph,
     settings: GlobalSettings
-  ): boolean {
+  ): { success: boolean; animations?: SerializedAnimations } {
     try {
       // Version compatibility check
       if (data.version && data.version !== this.STORAGE_VERSION) {
@@ -72,10 +123,14 @@ export class StorageService {
         graph.fromJSON(data);
       }
 
-      return true;
+      // Return animation data if present (to be restored by caller)
+      return {
+        success: true,
+        animations: data.animations,
+      };
     } catch (error) {
       console.error("Failed to deserialize state:", error);
-      return false;
+      return { success: false };
     }
   }
 
@@ -105,10 +160,11 @@ export class StorageService {
    * Save the current graph and settings to localStorage
    * @param graph The graph instance to save
    * @param settings The settings instance to save
+   * @param animations Optional animation data to save
    */
-  static saveState(graph: Graph, settings: GlobalSettings): void {
+  static saveState(graph: Graph, settings: GlobalSettings, animations?: SerializedAnimations | null): void {
     try {
-      const state = this.serialize(graph, settings);
+      const state = this.serialize(graph, settings, animations);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
       console.log("State saved to localStorage");
     } catch (error) {
@@ -121,27 +177,27 @@ export class StorageService {
    * Load the graph and settings from localStorage
    * @param graph The graph instance to populate
    * @param settings The settings instance to populate
-   * @returns true if state was loaded successfully, false otherwise
+   * @returns Object with success flag and optional animation data
    */
-  static loadState(graph: Graph, settings: GlobalSettings): boolean {
+  static loadState(graph: Graph, settings: GlobalSettings): { success: boolean; animations?: SerializedAnimations } {
     try {
       const stateJson = localStorage.getItem(this.STORAGE_KEY);
       if (!stateJson) {
         console.log("No saved state found in localStorage");
-        return false;
+        return { success: false };
       }
 
       const state = JSON.parse(stateJson);
-      const success = this.deserialize(state, graph, settings);
+      const result = this.deserialize(state, graph, settings);
       
-      if (success) {
+      if (result.success) {
         console.log(`State loaded from localStorage (saved at ${state.timestamp || "unknown time"})`);
       }
       
-      return success;
+      return result;
     } catch (error) {
       console.error("Failed to load state from localStorage:", error);
-      return false;
+      return { success: false };
     }
   }
 

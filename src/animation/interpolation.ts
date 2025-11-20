@@ -208,35 +208,41 @@ export function createEdgeAnimationDrawables(
   
   // Appearing edges (growing from start to end)
   diff.addedEdges.forEach(edge => {
-    const fromNode = graph.getNode(edge.fromId);
-    const toNode = graph.getNode(edge.toId);
-    
-    if (fromNode && toNode) {
-      const fromPos = fromNode.coordinates;
-      const toPos = toNode.coordinates;
+    // Check if nodes exist in current graph state
+    try {
+      const fromNode = graph.getNode(edge.fromId);
+      const toNode = graph.getNode(edge.toId);
       
-      // Scale coordinates (same as Graph.toDrawables())
-      const scaledFromX = fromPos.x * scalingFactor.x;
-      const scaledFromY = fromPos.y * scalingFactor.y;
-      const scaledToX = toPos.x * scalingFactor.x;
-      const scaledToY = toPos.y * scalingFactor.y;
-      
-      // Start from 0.01 instead of 0 so the line is always visible
-      const visibleProgress = Math.max(0.01, progress);
-      
-      const partialLine = new PartialLine(
-        { x: scaledFromX, y: scaledFromY },
-        { x: scaledToX, y: scaledToY },
-        visibleProgress,
-        true, // zigZagged
-        edge.color,
-        edge.weight * scaleFactor,
-        graph.zigzagSpacing * scaleFactor,
-        graph.zigzagLength * scaleFactor,
-        graph.zigzagEndLengths * scaleFactor
-      );
-      
-      drawables.push(partialLine);
+      if (fromNode && toNode) {
+        const fromPos = fromNode.coordinates;
+        const toPos = toNode.coordinates;
+        
+        // Scale coordinates (same as Graph.toDrawables())
+        const scaledFromX = fromPos.x * scalingFactor.x;
+        const scaledFromY = fromPos.y * scalingFactor.y;
+        const scaledToX = toPos.x * scalingFactor.x;
+        const scaledToY = toPos.y * scalingFactor.y;
+        
+        // Start from 0.01 instead of 0 so the line is always visible
+        const visibleProgress = Math.max(0.01, progress);
+        
+        const partialLine = new PartialLine(
+          { x: scaledFromX, y: scaledFromY },
+          { x: scaledToX, y: scaledToY },
+          visibleProgress,
+          true, // zigZagged
+          edge.color,
+          edge.weight * scaleFactor,
+          graph.zigzagSpacing * scaleFactor,
+          graph.zigzagLength * scaleFactor,
+          graph.zigzagEndLengths * scaleFactor
+        );
+        
+        drawables.push(partialLine);
+      }
+    } catch (e) {
+      // Node doesn't exist in current graph state (e.g., node is also being added)
+      // Skip this edge for now
     }
   });
   
@@ -301,45 +307,51 @@ export function createArrowAnimationDrawables(
   
   // Appearing arrows (growing from start to end)
   diff.addedArrows.forEach(arrow => {
-    const fromNode = graph.getNode(arrow.fromId);
-    const toNode = graph.getNode(arrow.toId);
-    
-    if (fromNode && toNode) {
-      const fromPos = fromNode.coordinates;
-      const toPos = toNode.coordinates;
+    // Check if nodes exist in current graph state
+    try {
+      const fromNode = graph.getNode(arrow.fromId);
+      const toNode = graph.getNode(arrow.toId);
       
-      // Calculate partial end point
-      const dx = toPos.x - fromPos.x;
-      const dy = toPos.y - fromPos.y;
-      const partialEndX = fromPos.x + dx * progress;
-      const partialEndY = fromPos.y + dy * progress;
-      
-      // Scale coordinates (same as Graph.toDrawables())
-      const scaledFromX = fromPos.x * scalingFactor.x;
-      const scaledFromY = fromPos.y * scalingFactor.y;
-      const scaledPartialEndX = partialEndX * scalingFactor.x;
-      const scaledPartialEndY = partialEndY * scalingFactor.y;
-      
-      // Check if an edge exists between the same nodes for offset
-      const hasEdge = graph.hasEdgeBetween(arrow.fromId, arrow.toId);
-      const offset = hasEdge ? 8 * scaleFactor : 0;
-      
-      // Only show arrow heads when progress is high enough (> 0.9)
-      const showHeads = progress > 0.9;
-      
-      const arrowLine = new ArrowLine(
-        { x: scaledFromX, y: scaledFromY },
-        { x: scaledPartialEndX, y: scaledPartialEndY },
-        arrow.color,
-        arrow.width * scaleFactor,
-        arrow.headAtStart && showHeads,
-        arrow.headAtEnd && showHeads,
-        offset,
-        fromNode.radius * scaleFactor,
-        toNode.radius * scaleFactor
-      );
-      
-      drawables.push(arrowLine);
+      if (fromNode && toNode) {
+        const fromPos = fromNode.coordinates;
+        const toPos = toNode.coordinates;
+        
+        // Calculate partial end point
+        const dx = toPos.x - fromPos.x;
+        const dy = toPos.y - fromPos.y;
+        const partialEndX = fromPos.x + dx * progress;
+        const partialEndY = fromPos.y + dy * progress;
+        
+        // Scale coordinates (same as Graph.toDrawables())
+        const scaledFromX = fromPos.x * scalingFactor.x;
+        const scaledFromY = fromPos.y * scalingFactor.y;
+        const scaledPartialEndX = partialEndX * scalingFactor.x;
+        const scaledPartialEndY = partialEndY * scalingFactor.y;
+        
+        // Check if an edge exists between the same nodes for offset
+        const hasEdge = graph.hasEdgeBetween(arrow.fromId, arrow.toId);
+        const offset = hasEdge ? 8 * scaleFactor : 0;
+        
+        // Only show arrow heads when progress is high enough (> 0.9)
+        const showHeads = progress > 0.9;
+        
+        const arrowLine = new ArrowLine(
+          { x: scaledFromX, y: scaledFromY },
+          { x: scaledPartialEndX, y: scaledPartialEndY },
+          arrow.color,
+          arrow.width * scaleFactor,
+          arrow.headAtStart && showHeads,
+          arrow.headAtEnd && showHeads,
+          offset,
+          fromNode.radius * scaleFactor,
+          toNode.radius * scaleFactor
+        );
+        
+        drawables.push(arrowLine);
+      }
+    } catch (e) {
+      // Node doesn't exist in current graph state (e.g., node is also being added)
+      // Skip this arrow for now
     }
   });
   

@@ -22,7 +22,7 @@
     "jsdom": "^27.2.0",
     "typescript": "^5.8.2",
     "vite": "^6.4.2",
-    "vitest": "^4.0.9"
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "isthiscoloursimilar": "github:hamada147/IsThisColourSimilar"

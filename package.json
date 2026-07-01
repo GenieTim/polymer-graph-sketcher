@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "typescript": "^5.8.2",
-    "vite": "^6.2.7"
+    "typescript": "^6.0.3",
+    "vite": "^8.1.2"
   },
   "dependencies": {
     "isthiscoloursimilar": "github:hamada147/IsThisColourSimilar"

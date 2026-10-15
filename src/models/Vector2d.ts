@@ -1,12 +1,4 @@
-export class Point {
-  x: number;
-  y: number;
-
-  constructor(x: number, y: number) {
-    this.x = x;
-    this.y = y;
-  }
-}
+import { Point } from "./Point";
 
 export class Vector2d extends Point {
   constructor(p: Point | number, y?: number) {

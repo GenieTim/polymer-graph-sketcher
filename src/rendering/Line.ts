@@ -1,51 +1,6 @@
-import { Point } from "./primitives";
-import { GlobalSettings } from "./settings";
-
-export interface Drawable {
-  draw(ctx: CanvasRenderingContext2D): void;
-}
-
-export class Circle implements Drawable {
-  center: Point;
-  radius: number;
-  strokeWidth: number;
-  fillColor: string | null;
-  strokeColor: string;
-
-  constructor(
-    center: Point | null = null,
-    radius: number = 1,
-    strokeWidth: number = 1,
-    fillColor: string | null = "#000",
-    strokeColor: string = "#000"
-  ) {
-    this.center = center || new Point(0, 0);
-    this.radius = radius;
-    this.strokeWidth = strokeWidth;
-    this.fillColor = fillColor;
-    this.strokeColor = strokeColor;
-  }
-
-  setCenter(point: Point) {
-    this.center = point;
-  }
-
-  setRadius(radius: number) {
-    this.radius = radius;
-  }
-
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.beginPath();
-    ctx.arc(this.center.x, this.center.y, this.radius, 0, 2 * Math.PI);
-    if (this.fillColor) {
-      ctx.fillStyle = this.fillColor;
-      ctx.fill();
-    }
-    ctx.strokeStyle = this.strokeColor;
-    ctx.lineWidth = this.strokeWidth;
-    ctx.stroke();
-  }
-}
+import { Point } from "../models/Point";
+import { GlobalSettings } from "../utils/GlobalSettings";
+import { Drawable } from "./Drawable";
 
 export class Line implements Drawable {
   from: Point;
@@ -214,46 +169,5 @@ export class Line implements Drawable {
 
   setZigZagged(enable: boolean) {
     this.zigZagged = enable;
-  }
-}
-
-export class Rectangle implements Drawable {
-  topLeft: Point;
-  width: number;
-  height: number;
-  strokeColor: string;
-  lineWidth: number;
-  fillColor: string | null;
-
-  constructor(
-    topLeft: Point | null = null,
-    width: number = 100,
-    height: number = 100,
-    lineWidth: number = 2.0,
-    strokeColor: string = "#000",
-    fillColor: string | null = null
-  ) {
-    this.topLeft = topLeft || new Point(0, 0);
-    this.width = width;
-    this.height = height;
-    this.strokeColor = strokeColor;
-    this.lineWidth = lineWidth;
-    this.fillColor = fillColor;
-  }
-
-  draw(ctx: CanvasRenderingContext2D): void {
-    ctx.beginPath();
-    ctx.rect(this.topLeft.x, this.topLeft.y, this.width, this.height);
-    if (this.fillColor) {
-      ctx.fillStyle = this.fillColor;
-    } else {
-      ctx.fillStyle = "transparent";
-    }
-    ctx.fill();
-    ctx.lineWidth = this.lineWidth;
-    if (this.strokeColor) {
-      ctx.strokeStyle = this.strokeColor;
-      ctx.stroke();
-    }
   }
 }

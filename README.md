@@ -1,6 +1,8 @@
 # Polymer Graph Sketcher
 
-Create 2D sketches of Polymers: 
+[![Tests](https://github.com/GenieTim/polymer-graph-sketcher/actions/workflows/test.yml/badge.svg)](https://github.com/GenieTim/polymer-graph-sketcher/actions/workflows/test.yml)
+
+Create 2D sketches of Polymers:
 With this software, you can sketch bead-spring networks in 2D.
 
 Example:
@@ -22,7 +24,10 @@ Example:
       - [Random Walk Generator](#random-walk-generator)
       - [Side Chain Generator](#side-chain-generator)
     - [Tools](#tools)
+    - [Auto-Save and State Persistence](#auto-save-and-state-persistence)
     - [Export Options](#export-options)
+    - [Movie Recording](#movie-recording)
+      - [How to Use](#how-to-use)
   - [Keyboard Shortcuts](#keyboard-shortcuts)
     - [General Actions](#general-actions)
     - [Interaction Modes](#interaction-modes)
@@ -109,6 +114,17 @@ These settings affect both new as well as currently selected nodes/vertices.
 - Select vertices with stroke: Select nodes based on their outline color
 - Disable PBC: Toggle periodic boundary conditions
 
+### Auto-Save and State Persistence
+
+The application automatically saves your work to your browser's local storage:
+
+- **Automatic saving**: Your graph and settings are saved every 30 seconds
+- **Save on exit**: Your work is automatically saved when you close or reload the page
+- **Auto-restore**: When you return to the application, your previous work is automatically loaded
+- **Clear saved state**: Use the "Clear saved state" button to start fresh (this will not affect your current canvas)
+
+This feature ensures you never lose your work due to accidental page refreshes or browser closures.
+
 ### Export Options
 
 - Save as image: Export the graph as a PNG image
@@ -119,29 +135,51 @@ These tools and settings allow for the creation of complex polymer graphs, from 
 
 The import of the JSON file is offered at the bottom of the tools.
 
+### Movie Recording
+
+Create animated movies of your graph construction and simulation processes.
+
+The Movie Recording feature allows you to:
+
+1. **Record Edge Additions**: Capture edges as you add them, then generate smooth animations showing the graph being built
+2. **Animate Simulations**: Record force balance or position equilibration steps at a controlled speed
+3. **Create Combined Movies**: Combine multiple animation types into a single video
+
+#### How to Use
+
+1. Open the "Movie Recording" accordion section in the controls
+2. Choose your animation type:
+   - **Edge Addition**: Click "Start Recording Edges", add edges in your graph, then "Stop Recording". Adjust duration and create the movie.
+   - **Simulation**: Select nodes, configure simulation parameters, and create a simulation movie
+   - **Combined**: Create movies with both edge additions and simulation steps
+3. Movies are automatically downloaded as WebM video files
+
 ## Keyboard Shortcuts
 
 The Polymer Graph Sketcher supports the following keyboard shortcuts for quick access to various functions:
 
 ### General Actions
 
-- `Ctrl/Cmd + S`: Save canvas as image and export graph
-- `Ctrl/Cmd + Z`: Undo last action
-- `Ctrl/Cmd + Shift + Z` or `Ctrl/Cmd + Y`: Redo last undone action
-- `A`: Select all nodes
-- `C` or `Escape`: Clear selection
-- `I`: Invert selection
+- `Ctrl/Cmd + s`: Save canvas as image and export graph
+- `Ctrl/Cmd + z`: Undo last action
+- `Ctrl/Cmd + Shift + z` or `Ctrl/Cmd + y`: Redo last undone action
+- `a`: Select <u>a</u>ll nodes
+- `c` or `Escape`: <u>C</u>lear selection
+- `i`: <u>i</u>nvert selection
 - `Backspace` or `Delete`: Delete selected nodes
+- `f`: Take a snapshot/<u>f</u>rame (in stop motion movie recording mode)
 
 ### Interaction Modes
 
-- `D`: Switch to "delete vertex" mode
-- `R`: Switch to "random walk" mode
-- `L`: Switch to "delete edge" mode
-- `S`: Switch to "select vertex" mode
-- `H`: Switch to "select chains" mode
-- `V`: Switch to "add vertex" (add node) mode
-- `E`: Switch to "add edge" mode
+- `d`: Switch to "<u>d</u>elete vertex" mode
+- `r`: Switch to "<u>r</u>andom walk" mode
+- `l`: Switch to "de<u>l</u>ete edge" mode
+- `s`: Switch to "<u>s</u>elect vertex" mode
+- `h`: Switch to "select c<u>h</u>ains" mode
+- `v`: Switch to "add <u>v</u>ertex" (add node) mode
+- `e`: Switch to "add <u>e</u>dge" mode
+- `A` (`Shift + a`): Switch to "add <u>A</u>rrow" mode
+- `w`: Switch to "delete arro<u>w</u>" mode
 
 These shortcuts provide quick access to common actions and interaction modes, enhancing the efficiency of working with the Polymer Graph Sketcher.
 

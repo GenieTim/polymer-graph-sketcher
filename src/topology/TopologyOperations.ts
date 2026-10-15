@@ -1,5 +1,5 @@
-import { graph } from "./graph";
-import { selection } from "./selection";
+import { graph } from "../models";
+import { selection } from "../services/SelectionService";
 
 function mergeNodes(node1: number, node2: number): void {
   if (node1 === node2) {
